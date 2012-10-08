@@ -5,4 +5,3 @@ The goals are to explore:
 - error recovery for MicroXML
 
 James Clark
-jjc@jclark.com
