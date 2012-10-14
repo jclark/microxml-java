@@ -56,4 +56,23 @@ public class ElementTest {
             assertEquals(root.content().get(i).getName(),
                          "x" + Integer.toString(i));
     }
+
+    @Test
+    public void testRemove() throws Exception {
+        Element root = new Element("root");
+        ContentList con = root.content();
+        final int N = 10;
+        for (int i = 0; i < N; i++)
+            con.add(new Element("x" + Integer.toString(i)));
+        Element e5 = con.get(5);
+        Element removed = con.remove(5);
+        assertNull(removed.getParent());
+        assertEquals(removed.getIndexInParent(), -1);
+        assertEquals(con.size(), N - 1);
+        assertTrue(removed == e5);
+        for (int i = 5; i < N - 1; i++)
+            assertEquals(con.get(i).getName(), "x" + Integer.toString(i + 1));
+        for (int i = 0; i < 5; i++)
+            assertEquals(con.get(i).getName(), "x" + Integer.toString(i));
+    }
 }
