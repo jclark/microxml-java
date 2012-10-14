@@ -13,24 +13,29 @@ import java.util.Iterator;
 public class Element {
     @NotNull
     private String name;
+    @Nullable
     private Element parent;
     private int indexInParent;
-
-    private final ContentImpl content;
-    private final AttributesImpl attributes;
+    @Nullable
+    private AttributeSet attributeSet;
+    private final ContentListImpl contentList;
 
     /**
      * Creates an Element with a given name.
      * The attributes and content of the element are empty.
-     * @param name
+     * @param name the name of the Element
      */
     public Element(@NotNull String name) {
+        this(name, null);
+    }
+
+    public Element(@NotNull String name, @Nullable AttributeSet attributeSet) {
         checkNotNull(name);
         this.name = name;
         this.parent = null;
         this.indexInParent = -1;
-        this.content = new ContentImpl();
-        this.attributes = new AttributesImpl();
+        this.attributeSet = attributeSet;
+        this.contentList = new ContentListImpl();
     }
 
     public Element(@NotNull Element element) {
@@ -38,13 +43,13 @@ public class Element {
         this.name = element.name;
         this.parent = null;
         this.indexInParent = -1;
-        this.content = new ContentImpl(element.content);
-        this.attributes = new AttributesImpl(element.attributes);
+        this.attributeSet = element.attributeSet == null ? null : element.attributeSet.clone();
+        this.contentList = new ContentListImpl(element.contentList);
     }
 
     /**
      * Returns the name of this Element.
-     * @return
+     * @return the name of this Element; never null
      */
     @NotNull
     public String getName() {
@@ -53,7 +58,7 @@ public class Element {
 
     /**
      * Sets the name of this Element.
-     * @param name
+     * @param name the name of this Element; must not be null
      */
     public void setName(@NotNull String name) {
         checkNotNull(name);
@@ -62,26 +67,28 @@ public class Element {
 
     /**
      * Returns the attributes of this Element.
-     * @return an AttributesImpl object representing the attributes of this Element
+     * @return an AttributeSet representing the attributes of this Element
      */
     @NotNull
-    public final Attributes attributes() {
-        return attributes;
+    public AttributeSet attributes() {
+        if (attributeSet == null)
+            attributeSet = new AttributeSetImpl();
+        return attributeSet;
     }
 
     /**
      * Returns the content of this Element.
-     * @return a ContentImpl object representing the content of this Element
+     * @return a ContentList for the content of this Element; never null
      */
     @NotNull
-    public final Content content() {
-        return content;
+    public ContentList content() {
+        return contentList;
     }
 
     /**
      * Returns the parent Element, or null if this Element has no parent.
-     * The parent of an element is set when it is added to the ContentImpl of another element.
-     * @return
+     * The parent of an element is set when it is added to the ContentListImpl of another element.
+     * @return the parent Element of this Element, if there is one; null otherwise
      */
     @Nullable
     public Element getParent() {
@@ -90,7 +97,7 @@ public class Element {
 
     /**
      * Returns the index of this Element in its parent, or -1 if this Element has no parent.
-     * @return
+     * @return the index of this Element in its parent, or -1 if this Element has no parent
      */
     public int getIndexInParent() {
         return indexInParent;
@@ -103,7 +110,7 @@ public class Element {
 
     private void attach(Element parent, int indexInParent) {
         if (this.parent != null)
-            throw new HierarchyException();
+            throw new IllegalArgumentException("Element already has a parent");
         this.parent = parent;
         this.indexInParent = indexInParent;
     }
@@ -114,10 +121,10 @@ public class Element {
     }
 
     /**
-     * The content of an element.
+     * The contentList of an element.
      */
-    private final class ContentImpl implements Content {
-        // The number of elements in the content.
+    private final class ContentListImpl implements ContentList {
+        // The number of elements in the ContentList.
         private int size;
 
         // An array containing the elements.
@@ -135,13 +142,13 @@ public class Element {
         // Used to provide fail-fast behaviour for iterators.
         private int modCount = 0;
 
-        private ContentImpl() {
+        private ContentListImpl() {
             size = 0;
             elements = null;
             textChunks = null;
         }
 
-        private ContentImpl(ContentImpl content) {
+        private ContentListImpl(ContentListImpl content) {
             size = content.size;
             textChunks = content.textChunks == null ? null : Arrays.copyOf(content.textChunks, size + 1);
             elements = size == 0 ? null : new Element[size];
@@ -152,33 +159,48 @@ public class Element {
             }
         }
 
-        /**
-         * Returns true if the ContentImpl has no elements and no text.
-         * @return  true if this ContentImpl has no elements and no text.
-         */
+        @NotNull
+        public Element getOwner() {
+            return Element.this;
+        }
+
         public boolean isEmpty() {
             return size == 0 && (textChunks == null || textChunks[0].isEmpty());
         }
 
-        /**
-         * Returns the number of elements.
-         * @return the number of elements
-         */
         public int size() {
             return size;
         }
 
-        /**
-         * Appends an element.
-         * @param element
-         */
         public void add(@NotNull Element element) {
+            modCount++;
             ensureCapacity(size + 1);
             element.attach(Element.this, size);
             elements[size++] = element;
             if (textChunks != null)
                 textChunks[size] = "";
         }
+
+        public void ensureCapacity(int minCapacity) {
+            int newLength;
+            if (elements == null)
+                newLength = 8;
+            else if (elements.length >= minCapacity)
+                return;
+            else
+                newLength = elements.length * 2;
+            if (newLength < minCapacity) {
+                if (minCapacity == Integer.MAX_VALUE)
+                    throw new IllegalArgumentException();
+                newLength = minCapacity;
+            }
+            if (elements == null)
+                elements = new Element[newLength];
+            else
+                elements = Arrays.copyOf(elements, newLength);
+            if (textChunks != null)
+                textChunks = Arrays.copyOf(textChunks, newLength + 1);
+         }
 
         @NotNull
         private String[] allocateTextChunks() {
@@ -210,7 +232,7 @@ public class Element {
              * @return the text chunk before the element to be returned by next()
              */
             public String getText() {
-                return ContentImpl.this.getText(nextIndex);
+                return ContentListImpl.this.getText(nextIndex);
             }
 
             public Element next() {
@@ -222,7 +244,7 @@ public class Element {
                 if (lastReturned == -1)
                     throw new IllegalStateException();
                 checkModCount();
-                ContentImpl.this.remove(lastReturned);
+                ContentListImpl.this.remove(lastReturned);
                 --nextIndex;
                 expectedModCount = modCount;
                 lastReturned = -1;
@@ -234,10 +256,6 @@ public class Element {
             }
         }
 
-        /**
-         * Creates an Iterator that iterates over the child elements.
-         * @return
-         */
         public ContentIterator iterator() {
             return new ContentIterator();
         }
@@ -271,16 +289,10 @@ public class Element {
             size = 0;
         }
 
-        /**
-         * Removes all text.
-         */
         public void clearText() {
             textChunks = null;
         }
 
-        /**
-         * Returns the index of the first text chunk that is not all whitespace, or -1 if there is no such text chunk.
-         */
         public int indexOfNonWhitespaceText() {
             if (textChunks != null) {
                 for (int i = 0; i <= size; i++) {
@@ -306,12 +318,6 @@ public class Element {
             return -1;
         }
 
-        /**
-         * Replaces an Element at a specified index.
-         * @param index index of element to replace
-         * @param element Element to be stored at index
-         * @return Element previously stored at index
-         */
         public Element set(int index, @NotNull Element element) {
             checkElementIndex(index);
             checkNotNull(element);
@@ -323,11 +329,6 @@ public class Element {
             return old;
         }
 
-        /**
-         * Inserts an Element at a specified position.
-         * @param index
-         * @param element
-         */
         public void add(int index, @NotNull Element element) {
             if (index == size) {
                 add(element);
@@ -335,6 +336,7 @@ public class Element {
             }
             checkNotNull(element);
             checkElementIndex(index);
+            modCount++;
             ensureCapacity(size + 1);
             for (int i = size; i > index; --i) {
                 Element e = elements[i - 1];
@@ -348,12 +350,6 @@ public class Element {
             }
         }
 
-        /**
-         *
-         * @param index
-         * @param str
-         * @throws NullPointerException if str is null
-         */
         public void setText(int index, @NotNull String str) {
             checkTextIndex(index);
             if (textChunks == null) {
@@ -369,16 +365,10 @@ public class Element {
             textChunks[index] = str;
         }
 
-        public void ensureCapacity(int minCapacity) {
-             // TODO
-        }
-
         public void trimToSize() {
-
+            // TODO
         }
 
-
-        @NotNull
         public Element remove(int index) {
             checkElementIndex(index);
             ++modCount;
@@ -416,14 +406,6 @@ public class Element {
             size = newSize;
         }
 
-        public void set(ContentImpl content) {
-            // TODO
-
-        }
-        public void addAll(ContentImpl content) {
-            // TODO
-        }
-
         private void checkElementIndex(int index) {
             if (index >= size)
                 throw new IndexOutOfBoundsException();
@@ -435,9 +417,4 @@ public class Element {
         }
 
     }
-
-
-    private static class HierarchyException extends RuntimeException {
-    }
-
 }

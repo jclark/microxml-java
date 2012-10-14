@@ -3,13 +3,16 @@ package com.jclark.microxml.tree;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.AbstractSet;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 /**
- * A collection of AttributesImpl.
+ * A collection of AttributeSetImpl.
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
  */
-class AttributesImpl extends AbstractSet<Attribute> implements Attributes {
+class AttributeSetImpl extends AbstractSet<Attribute> implements AttributeSet, Cloneable {
     // hash table of attributes; uses open-addressing, linear-probing
     @Nullable
     private Attribute[] atts;
@@ -26,15 +29,11 @@ class AttributesImpl extends AbstractSet<Attribute> implements Attributes {
     private static final int INITIAL_CAPACITY = 8; // must be power of 2
     private static final float LOAD_FACTOR = 0.6f;
 
-    AttributesImpl() {
+    AttributeSetImpl() {
         atts = null;
         size = 0;
         used = 0;
         usedLimit = 0;
-    }
-
-    AttributesImpl(AttributesImpl atts) {
-        // TODO
     }
 
     public int size() {
@@ -58,38 +57,30 @@ class AttributesImpl extends AbstractSet<Attribute> implements Attributes {
             if (atts[i] != null && atts[i] != REMOVED) {
                 // need a symmetric operation, since we are combining hash codes
                 // in an undefined order
-                h ^= atts[i].hashCode();
+                h += atts[i].hashCode();
             }
         }
         return h;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null || getClass() != obj.getClass())
-            return false;
-        AttributesImpl other = (AttributesImpl)obj;
-        if (size != other.size)
-            return false;
-        if (size == 0)
-            return true;
-        int i = atts.length;
-        while (--i >= 0) {
-            Attribute att = atts[i];
-            if (att != null && att != REMOVED && !att.getValue().equals(other.getValue(att.getName())))
-                return false;
+    public AttributeSetImpl clone() {
+        try {
+            AttributeSetImpl cloned = (AttributeSetImpl) super.clone();
+            if (atts != null) {
+                cloned.atts = new Attribute[atts.length];
+                for (int i = 0; i < atts.length; i++) {
+                    Attribute att = atts[i];
+                    if (att != null)
+                        cloned.atts[i] = att == REMOVED ? att : att.clone();
+                }
+            }
+            cloned.modCount = 0;
+            return cloned;
+        } catch (CloneNotSupportedException e) {
+            throw new InternalError();
         }
-        return true;
     }
 
-    /**
-     * If the AttributesImpl do not already contain an attribute with the same name as att,
-     * then add the attribute and return true. Otherwise, do not add the attribute and return false.
-     * @param att
-     * @return true if the attribute was added
-     */
     public boolean add(@NotNull Attribute att) {
         String name = att.getName();
         ++modCount;
@@ -116,15 +107,15 @@ class AttributesImpl extends AbstractSet<Attribute> implements Attributes {
             return;
         }
         Attribute[] newAtts = new Attribute[atts.length * 2];
-        for (int i = 0; i < atts.length; i++) {
-            if (atts[i] != null && atts[i] != REMOVED) {
-                int j = atts[i].getName().hashCode() & (newAtts.length - 1);
+        for (Attribute att : atts) {
+            if (att != null && att != REMOVED) {
+                int j = att.getName().hashCode() & (newAtts.length - 1);
                 while (newAtts[j] != null) {
                     if (j == 0)
                         j = newAtts.length;
                     --j;
                 }
-                newAtts[j] = atts[i];
+                newAtts[j] = att;
             }
         }
         atts = newAtts;
@@ -165,11 +156,6 @@ class AttributesImpl extends AbstractSet<Attribute> implements Attributes {
         return find(o) >= 0;
     }
 
-    /**
-     *
-     * @param o
-     * @return true if an element was removed
-     */
     @Override
     public boolean remove(Object o) {
         int i = find(o);

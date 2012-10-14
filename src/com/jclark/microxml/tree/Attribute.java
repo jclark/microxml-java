@@ -7,7 +7,7 @@ import org.jetbrains.annotations.NotNull;
  *
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
  */
-public class Attribute {
+public class Attribute implements Cloneable {
     @NotNull
     private final String name;
     @NotNull
@@ -48,5 +48,15 @@ public class Attribute {
     @Override
     public int hashCode() {
         return 31 * name.hashCode() + value.hashCode();
+    }
+
+    @Override
+    public Attribute clone() {
+        try {
+        return (Attribute) super.clone();
+        }
+        catch (CloneNotSupportedException e) {
+            throw new InternalError();
+        }
     }
 }
