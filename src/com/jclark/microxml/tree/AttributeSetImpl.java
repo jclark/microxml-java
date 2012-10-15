@@ -249,4 +249,18 @@ class AttributeSetImpl extends AbstractSet<Attribute> implements AttributeSet, C
         return new Iter();
     }
 
+    public <T> T[] toArray(T[] a) {
+        if (size > a.length)
+            a = (T[])java.lang.reflect.Array.newInstance(a.getClass().getComponentType(), size);
+        int i = atts.length;
+        int j = 0;
+        while (--i >= 0) {
+            Attribute att = atts[i];
+            if (att != null && att != REMOVED)
+                a[j++] = (T)att;
+        }
+        while (j < a.length)
+            a[j++] = null;
+        return a;
+    }
 }
