@@ -26,7 +26,6 @@ import java.util.Iterator;
 // TODO: compare document order
 // TODO: trimToSize
 // TODO: efficient test for empty text
-// TODO: efficient test for empty attributes
 public class Element implements Iterable<Element> {
     @NotNull
     private String name;
@@ -123,6 +122,17 @@ public class Element implements Iterable<Element> {
         if (attributeSet == null)
             attributeSet = new AttributeSetImpl();
         return attributeSet;
+    }
+
+    /**
+     * Returns true if this Element has one or more Attributes.
+     * This is a shorthand for <code>!attributes().isEmpty()</code>.
+     * Using <code>hasAttributes()</code> may allow the implementation to avoid creating an AttributeSet object
+     * for Elements that have no attributes.
+     * @return true if this Element has one or more Attributes
+     */
+    public boolean hasAttributes() {
+        return attributeSet != null && !attributeSet.isEmpty();
     }
 
     /**
