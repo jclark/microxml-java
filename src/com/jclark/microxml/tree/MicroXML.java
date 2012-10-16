@@ -1,6 +1,12 @@
 package com.jclark.microxml.tree;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.Charset;
 
 /**
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
@@ -13,9 +19,26 @@ public class MicroXML {
         appendable.append('\n');
     }
 
+    static public void serialize(Element element, File file) throws IOException {
+        Writer w = fileWriter(file);
+        SerializeUtil.serialize(element, w);
+        w.append('\n').close();
+    }
+
+    static private final int ATTRIBUTE_BUFFER_LENGTH = 16;
+
     static public void canonicalize(Element element, Appendable appendable) throws IOException {
-        SerializeUtil.canonicalize(element, appendable, new Attribute[16]);
+        SerializeUtil.canonicalize(element, appendable, new Attribute[ATTRIBUTE_BUFFER_LENGTH]);
         appendable.append('\n');
     }
 
+    static public void canonicalize(Element element, File file) throws IOException {
+        Writer w = fileWriter(file);
+        SerializeUtil.canonicalize(element, w, new Attribute[ATTRIBUTE_BUFFER_LENGTH]);
+        w.append('\n').close();
+    }
+
+    static private Writer fileWriter(File file) throws IOException {
+        return new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), Charset.forName("UTF-8")));
+    }
 }
