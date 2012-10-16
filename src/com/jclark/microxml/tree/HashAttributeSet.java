@@ -9,10 +9,10 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 /**
- * A collection of AttributeSetImpl.
+ * A collection of Attributes.
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
  */
-class AttributeSetImpl extends AbstractSet<Attribute> implements AttributeSet, Cloneable {
+class HashAttributeSet extends AbstractSet<Attribute> implements AttributeSet, Cloneable {
     // hash table of attributes; uses open-addressing, linear-probing
     @Nullable
     private Attribute[] atts;
@@ -29,7 +29,7 @@ class AttributeSetImpl extends AbstractSet<Attribute> implements AttributeSet, C
     private static final int INITIAL_CAPACITY = 8; // must be power of 2
     private static final float LOAD_FACTOR = 0.6f;
 
-    AttributeSetImpl() {
+    HashAttributeSet() {
         atts = null;
         size = 0;
         used = 0;
@@ -63,9 +63,9 @@ class AttributeSetImpl extends AbstractSet<Attribute> implements AttributeSet, C
         return h;
     }
 
-    public AttributeSetImpl clone() {
+    public HashAttributeSet clone() {
         try {
-            AttributeSetImpl cloned = (AttributeSetImpl) super.clone();
+            HashAttributeSet cloned = (HashAttributeSet) super.clone();
             if (atts != null) {
                 cloned.atts = new Attribute[atts.length];
                 for (int i = 0; i < atts.length; i++) {

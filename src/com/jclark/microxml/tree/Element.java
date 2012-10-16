@@ -120,7 +120,7 @@ public class Element implements Iterable<Element> {
     @NotNull
     public AttributeSet attributes() {
         if (attributeSet == null)
-            attributeSet = new AttributeSetImpl();
+            attributeSet = new HashAttributeSet();
         return attributeSet;
     }
 
