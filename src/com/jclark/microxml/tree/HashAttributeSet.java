@@ -9,7 +9,8 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 /**
- * A collection of Attributes.
+ * An implementation of AttributeSet that uses a hash table.
+ *
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
  */
 class HashAttributeSet extends AbstractSet<Attribute> implements AttributeSet, Cloneable {
