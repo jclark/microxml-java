@@ -499,4 +499,39 @@ public class Element implements Iterable<Element> {
         if (index > numChildElements)
             throw new IndexOutOfBoundsException();
     }
+
+    /**
+     * Returns the Location of the start-tag or empty-element tag for this Element.
+     *
+     * @return the Location of the start-tag or empty-element tag for this Element; null if no Location is available
+     */
+    public Location getStartTagLocation() {
+        return null;
+    }
+
+    /**
+     * Returns the Location of the end-tag for this Element.
+     * If this Element used an empty-element tag, returns the location of the "/>" that terminated the tag.
+     *
+     * @return the Location of the end-tag of this Element; null if no Location is available
+     */
+    public Location getEndTagLocation() {
+        return null;
+    }
+
+    /**
+     * Returns the location of a range of characters in the content.
+     * The range is allowed to be empty.
+     *
+     * @param chunkIndex the position of the text chunk containing the characters
+     * @param beginIndex the index within the text chunk of the first character of the range
+     * @param endIndex the index within the text chunk following the last character of the range
+     * @return the Location of the specified range of characters; null if no Location is available
+     * @throws IndexOutOfBoundsException if an index is out of range
+     */
+    public Location getTextLocation(int chunkIndex, int beginIndex, int endIndex) {
+        if (beginIndex > endIndex || beginIndex < 0 || endIndex > getText(chunkIndex).length())
+            throw new IndexOutOfBoundsException();
+        return null;
+    }
 }

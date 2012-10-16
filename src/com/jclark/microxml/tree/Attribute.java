@@ -59,4 +59,26 @@ public class Attribute implements Cloneable {
             throw new InternalError();
         }
     }
+
+    /**
+     * Returns the Location of this Attribute.
+     * The Location's range should cover the entire attribute starting from the first character of the
+     * name up to and including the closing quote of the value.
+     * @return the Location of this Attribute; null if not available
+     */
+    Location getLocation() {
+        return null;
+    }
+
+    /**
+     * Return the Location of a range of characters in the value of this Attribute.
+     * @param beginIndex the index of the first character of the range
+     * @param endIndex the index after the last character of the range
+     * @return the Location for the specified range; null if no Location is available
+     */
+    Location getValueLocation(int beginIndex, int endIndex) {
+        if (beginIndex < 0 || beginIndex > endIndex || endIndex > value.length())
+            throw new IndexOutOfBoundsException();
+        return null;
+    }
 }
