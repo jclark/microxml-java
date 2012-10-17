@@ -1,9 +1,7 @@
 package com.jclark.microxml.tree;
 
-import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
-import org.xml.sax.helpers.DefaultHandler;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -44,35 +42,6 @@ public class XML {
         }
     }
 
-    static private class Builder extends DefaultHandler {
-        Element root;
-        Element currentElement = null;
-
-        @Override
-        public void startElement(String uri, String localName, String qName, Attributes attributes) {
-            Element elem = new Element(qName);
-            if (currentElement == null)
-                root = elem;
-            else
-                currentElement.add(elem);
-            currentElement = elem;
-            AttributeSet atts = elem.attributes();
-            int length = attributes.getLength();
-            for (int i = 0; i < length; i++)
-                atts.add(new Attribute(attributes.getQName(i), attributes.getValue(i)));
-        }
-
-        @Override
-        public void endElement(String uri, String localName, String qName) {
-            currentElement = currentElement.getParent();
-        }
-
-        @Override
-        public void characters(char[] ch, int start, int length) {
-            currentElement.add(new String(ch, start, length));
-        }
-    }
-
     /**
      * Parses an XML File into an Element.
      * No namespace processing is performed.
@@ -83,14 +52,14 @@ public class XML {
      * @throws ParseException if the file is not well-formed XML
      */
     static public Element parse(File f) throws IOException, ParseException {
-        Builder builder = new Builder();
+        BuildHandler builder = new BuildHandler();
         try {
             ParserFactory.newParser().parse(f, builder);
         }
         catch (SAXException e) {
             throwSAXException(e);
         }
-        return builder.root;
+        return builder.getRoot();
     }
 
     static void throwSAXException(SAXException e) throws IOException, ParseException {
