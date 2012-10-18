@@ -25,13 +25,18 @@ import java.util.Iterator;
 
 // TODO: compare document order
 // TODO: trimToSize
-// TODO: efficient test for empty text
 public class Element implements Iterable<Element> {
+    private static char[] EMPTY_TEXT = new char[0];
+    private static final int INITIAL_TEXT_CAPACITY = 8;
+
     @NotNull
     private String name;
     @Nullable
     private Element parent;
+    // index in its parent, -1 if not attached
     private int indexInParent;
+    // index in the text array of its parent; undefined if not attached
+    private int charIndexInParent;
     @Nullable
     private AttributeSet attributeSet;
 
@@ -42,13 +47,12 @@ public class Element implements Iterable<Element> {
     // If numChildElements is 0, maybe null.
     private Element[] childElements;
 
-    // An array containing the text chunks.
-    // If non-null, then
-    // + length equal to elements.length + 1
-    // + for 0 <= i <= numChildElements, textChunks[i] != null
-    // If null, means all text chunks are empty.
-    @Nullable
-    private String[] textChunks;
+    // An array containing all the text.
+    @NotNull
+    private char[] text;
+
+    // Total number of characters of content (stored in text)
+    int textLength;
 
     // Used to provide fail-fast behaviour for iterators.
     private int modCount = 0;
@@ -76,7 +80,8 @@ public class Element implements Iterable<Element> {
         indexInParent = -1;
         numChildElements = 0;
         childElements = null;
-        textChunks = null;
+        text = EMPTY_TEXT;
+        textLength = 0;
     }
 
     public Element(@NotNull Element element) {
@@ -86,11 +91,13 @@ public class Element implements Iterable<Element> {
         indexInParent = -1;
         attributeSet = element.attributeSet == null ? null : element.attributeSet.clone();
         numChildElements = element.numChildElements;
-        textChunks = element.textChunks == null ? null : Arrays.copyOf(element.textChunks, numChildElements + 1);
+        text = Arrays.copyOf(text, textLength);
+        textLength = element.textLength;
         childElements = numChildElements == 0 ? null : new Element[numChildElements];
         for (int i = 0; i < numChildElements; i++) {
-            Element e = new Element(element.childElements[i]);
-            attach(e, i);
+            Element childElement = element.childElements[i];
+            Element e = new Element(childElement);
+            attach(e, i, childElement.charIndexInParent);
             childElements[i] = e;
         }
     }
@@ -163,11 +170,12 @@ public class Element implements Iterable<Element> {
      * @param child the element to be attached
      * @param indexInParent the index of the child in this Element
      */
-    private void attach(Element child, int indexInParent) {
+    private void attach(Element child, int indexInParent, int charIndexInParent) {
         if (child.parent != null)
             throw new IllegalArgumentException("Element already has a parent");
         child.parent = this;
         child.indexInParent = indexInParent;
+        child.charIndexInParent = charIndexInParent;
     }
 
     static void checkNotNull(Object obj) {
@@ -181,7 +189,7 @@ public class Element implements Iterable<Element> {
      * @return  true if the content of this Element is empty.
      */
     public boolean isEmpty() {
-        return numChildElements == 0 && (textChunks == null || textChunks[0].isEmpty());
+        return numChildElements == 0 && textLength == 0;
     }
 
     /**
@@ -204,10 +212,8 @@ public class Element implements Iterable<Element> {
     public void add(@NotNull Element element) {
         modCount++;
         ensureCapacity(numChildElements + 1);
-        attach(element, numChildElements);
+        attach(element, numChildElements, textLength);
         childElements[numChildElements++] = element;
-        if (textChunks != null)
-            textChunks[numChildElements] = "";
     }
 
     public void ensureCapacity(int minCapacity) {
@@ -227,27 +233,6 @@ public class Element implements Iterable<Element> {
             childElements = new Element[newLength];
         else
             childElements = Arrays.copyOf(childElements, newLength);
-        if (textChunks != null)
-            textChunks = Arrays.copyOf(textChunks, newLength + 1);
-    }
-
-    @NotNull
-    private String[] allocateTextChunks() {
-        String[] v = new String[childElements == null ? 1 : childElements.length + 1];
-        Arrays.fill(v, 0, numChildElements + 1, "");
-        return v;
-    }
-
-    /**
-     * Adds characters at the end of the content of this Element.
-     * @param text a String with the characters to add; must not be empty
-     */
-    public void add(@NotNull String text) {
-        if (!text.isEmpty()) {
-            if (textChunks == null)
-                textChunks = allocateTextChunks();
-            textChunks[numChildElements] += text;
-        }
     }
 
     public class ContentIterator implements Iterator<Element> {
@@ -311,70 +296,31 @@ public class Element implements Iterable<Element> {
     }
 
     /**
-     * Returns the text chunk at a specified position.
-     *
-     * @param index the position of the text chunk to be returned
-     * @return the text chunk at position index; this may be empty but is never null
-     */
-    @NotNull
-    public String getText(int index) {
-        checkTextIndex(index);
-        if (textChunks == null) {
-            if (index < 0)
-                throw new IndexOutOfBoundsException();
-            return "";
-        }
-        return textChunks[index];
-    }
-
-    /**
      * Removes all content.
      */
     public void clear() {
+        if (textLength > 0)
+            textChanging(0, textLength, 0);
         modCount++;
         for (int i = 0; i < numChildElements; i++)
             childElements[i].detach();
         childElements = null;
-        textChunks = null;
         numChildElements = 0;
+        text = EMPTY_TEXT;
+        textLength = 0;
     }
 
     /**
-     * Removes all text content.
-     * This makes all text chunks empty. The Elements are left unchanged.
+     * Removes all text.
      */
     public void clearText() {
-        textChunks = null;
-    }
-
-    /**
-     * Returns the position of the first text chunk that contains a character that is not a whitespace character.
-     * A whitespace character is one of tab, space, line-feed and carriage return.
-     * @return the position of the first text chunk that is not all whitespace; -1 is all characters are whitespace
-     */
-    public int indexOfNonWhitespaceText() {
-        if (textChunks != null) {
-            for (int i = 0; i <= numChildElements; i++) {
-                String str = textChunks[i];
-                if (!str.isEmpty()) {
-                    for (int j = 0, n = str.length(); j < n; j++) {
-                        char c = str.charAt(i);
-                        if (c > ' ')
-                            return i;
-                        switch (c) {
-                        case ' ':
-                        case '\r':
-                        case '\t':
-                        case '\n':
-                            break;
-                        default:
-                            return i;
-                        }
-                    }
-                }
-            }
-        }
-        return -1;
+        if (textLength == 0)
+            return;
+        textChanging(0, textLength, 0);
+        for (int i = 0; i < numChildElements; i++)
+            childElements[i].charIndexInParent = 0;
+        text = EMPTY_TEXT;
+        textLength = 0;
     }
 
     /**
@@ -389,9 +335,10 @@ public class Element implements Iterable<Element> {
         checkElementIndex(index);
         checkNotNull(element);
         Element old = childElements[index];
+        int charIndex = old.charIndexInParent;
         // Detach the old element first, in case we are replacing it by itself.
         old.detach();
-        attach(element, index);
+        attach(element, index, charIndex);
         childElements[index] = element;
         return old;
     }
@@ -411,6 +358,11 @@ public class Element implements Iterable<Element> {
         }
         checkNotNull(element);
         checkElementIndex(index);
+        int charIndex;
+        if (index == numChildElements)
+            charIndex = textLength;
+        else
+            charIndex = childElements[index].charIndexInParent;
         modCount++;
         ensureCapacity(numChildElements + 1);
         for (int i = numChildElements; i > index; --i) {
@@ -418,11 +370,115 @@ public class Element implements Iterable<Element> {
             childElements[i] = e;
             e.indexInParent = i;
         }
+        attach(element, index, charIndex);
         childElements[index] = element;
-        if (textChunks != null) {
-            System.arraycopy(textChunks, index, textChunks, index + 1, numChildElements + 1 - index);
-            textChunks[index] = "";
+    }
+
+    /**
+     * Adds characters at the end of the content of this Element.
+     * @param str a String with the characters to add; must not be empty
+     */
+    public void add(@NotNull String str) {
+        int length = str.length();
+        ensureTextCapacity(textLength + length);
+        textChanging(textLength, textLength, length);
+        str.getChars(0, length, text, textLength);
+        textLength += length;
+    }
+
+    /**
+     * Adds a character at the end of the content of this Element.
+     *
+     * @param c the character to be added.
+     */
+    public void add(char c) {
+        ensureTextCapacity(textLength + 1);
+        textChanging(textLength, textLength, 1);
+        text[textLength++] = c;
+    }
+
+    public void add(char[] buf, int offset, int length) {
+        if (length < 0 || offset < 0 || offset + length > buf.length)
+            throw new IndexOutOfBoundsException();
+        ensureTextCapacity(textLength + length);
+        textChanging(textLength, textLength, length);
+        System.arraycopy(buf, offset, text, textLength, length);
+        textLength += length;
+    }
+
+    private void ensureTextCapacity(int minCapacity) {
+        if (text.length >= minCapacity)
+            return;
+        int newLength;
+        if (text.length == 0)
+            newLength = INITIAL_TEXT_CAPACITY;
+        else
+            newLength = text.length * 2;
+        if (newLength < minCapacity)
+            newLength = minCapacity;
+        text = Arrays.copyOf(text, newLength);
+    }
+
+    /**
+     * Returns true if this Element's content contains one or more characters.
+     * @return true if this Element's content contains one or more characters
+     */
+    public boolean hasText() {
+        return textLength > 0;
+    }
+
+    /**
+     * Returns true if all the text is whitespace.
+     * This will automatically be true if the text is empty.
+     *
+     * @return true if all text is whitespace; false otherwise
+     */
+    public boolean isTextAllWhitespace() {
+        int i = textLength;
+        while (i > 0) {
+            char c = text[--i];
+            if (c > ' ')
+                return false;
+            switch (c) {
+            case ' ':
+            case '\r':
+            case '\t':
+            case '\n':
+                break;
+            default:
+                return false;
+            }
         }
+        return true;
+    }
+
+    /**
+     * Returns the text chunk at a specified position.
+     *
+     * @param index the position of the text chunk to be returned
+     * @return the text chunk at position index; this may be empty but is never null
+     */
+    @NotNull
+    public String getText(int index) {
+        int startIndex = getTextChunkStartIndex(index);
+        int endIndex = getTextChunkEndIndex(index);
+        return startIndex == endIndex ? "" : new String(text, startIndex, endIndex - startIndex);
+    }
+
+    private int getTextChunkStartIndex(int index) {
+        if (index <= 0) {
+            if (index < 0)
+                throw new IndexOutOfBoundsException();
+            return 0;
+        }
+        if (index > numChildElements)
+            throw new IndexOutOfBoundsException();
+        return childElements[index - 1].charIndexInParent;
+    }
+
+    // This assumes that index is in bounds
+    private int getTextChunkEndIndex(int index) {
+        return index == numChildElements ? textLength : childElements[index].charIndexInParent;
     }
 
     /**
@@ -431,18 +487,23 @@ public class Element implements Iterable<Element> {
      * @param str the new text chunk for the position; this may be empty, but must not be null
      */
     public void setText(int index, @NotNull String str) {
-        checkTextIndex(index);
-        if (textChunks == null) {
-            if (str.isEmpty()) {
-                if (index < 0)
-                    throw new IndexOutOfBoundsException();
-                return;
-            }
-            textChunks = allocateTextChunks();
+        int startIndex = getTextChunkStartIndex(index);
+        int endIndex = getTextChunkEndIndex(index);
+        // str.length() ensures NullPointerException is thrown if str is null
+        int strLength = str.length();
+        int newTextLength = (textLength - (endIndex - startIndex)) + strLength;
+        ensureTextCapacity(newTextLength);
+        textChanging(startIndex, endIndex, strLength);
+        // Copy existing characters to the right position
+        System.arraycopy(text, endIndex, text, startIndex + strLength, textLength - endIndex);
+        // Copy new characters
+        str.getChars(0, strLength, text, startIndex);
+        if (textLength != newTextLength) {
+            int inc = newTextLength - textLength;
+            for (; index < numChildElements; index++)
+                childElements[index].charIndexInParent += inc;
+            textLength = newTextLength;
         }
-        else
-            checkNotNull(str);
-        textChunks[index] = str;
     }
 
     /**
@@ -464,29 +525,49 @@ public class Element implements Iterable<Element> {
             childElements[i] = e;
         }
         childElements[numChildElements - 1] = null;
-        if (textChunks != null) {
-            textChunks[index] += textChunks[index + 1];
-            System.arraycopy(textChunks, index + 2, textChunks, index + 1, numChildElements - index - 1);
-            textChunks[numChildElements] = null;
-        }
+        // Don't need to do anything to text.
         numChildElements -= 1;
         return old;
     }
 
-    public void removeRange(int fromIndex, int toIndex) {
-        checkElementIndex(fromIndex);
-        for (int to = toIndex, from = fromIndex; to < fromIndex; to++, from++) {
-            Element e = childElements[from];
-            e.indexInParent = to;
-            childElements[to] = e;
+    /**
+     * Removes count elements starting at start.
+     * Text between the removed elements is also removed.
+     * @param start the index of the first element to remove
+     * @param count the number of elements to remove
+     */
+    public void remove(int start, int count) {
+        if (count < 2) {
+            if (count == 1) {
+                remove(start);
+                return;
+            }
+            if (count == 0)
+                return;
+            throw new IndexOutOfBoundsException();
         }
-        int newSize = numChildElements - (toIndex - fromIndex);
+        checkElementIndex(start);
+        modCount++;
+        int end = start + count;
+        // Remove the text chars
+        int textStartIndex = childElements[start].indexInParent;
+        int textEndIndex = childElements[end - 1].indexInParent;
+        textChanging(textStartIndex, textEndIndex, 0);
+        int removedCharCount = textEndIndex - textStartIndex;
+        System.arraycopy(text, textEndIndex, text, textStartIndex, textLength - textEndIndex);
+        textEndIndex -= removedCharCount;
+        // Detach the elements that will be removed
+        for (int i = start; i < end; i++)
+            childElements[i].detach();
+        // Move the following elements into place
+        for (int src = end, dst = start; src < numChildElements; src++, dst++) {
+            Element e = childElements[src];
+            e.indexInParent = dst;
+            e.charIndexInParent -= removedCharCount;
+            childElements[dst] = e;
+        }
+        int newSize = numChildElements - count;
         Arrays.fill(childElements, newSize, numChildElements, null);
-        if (textChunks != null) {
-            textChunks[fromIndex] += textChunks[toIndex];
-            System.arraycopy(textChunks, toIndex, textChunks, fromIndex, numChildElements - toIndex);
-            Arrays.fill(textChunks, newSize + 1, numChildElements + 1, null);
-        }
         numChildElements = newSize;
     }
 
@@ -495,10 +576,7 @@ public class Element implements Iterable<Element> {
             throw new IndexOutOfBoundsException();
     }
 
-    private void checkTextIndex(int index) {
-        if (index > numChildElements)
-            throw new IndexOutOfBoundsException();
-    }
+    /* Locations */
 
     /**
      * Returns the Location of the start-tag or empty-element tag for this Element.
@@ -533,5 +611,16 @@ public class Element implements Iterable<Element> {
         if (beginIndex > endIndex || beginIndex < 0 || endIndex > getText(chunkIndex).length())
             throw new IndexOutOfBoundsException();
         return null;
+    }
+
+    /**
+     * Called when a range of characters in the content are about to change.
+     *
+     * @param start the index of the first character that is to be changed
+     * @param end the index after the last character that is to be changed
+     * @param length the number of characters that will be in the range after the change
+     */
+    protected void textChanging(int start, int end, int length) {
+        // do nothing
     }
 }
