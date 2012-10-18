@@ -45,6 +45,6 @@ class BuildHandler extends DefaultHandler {
 
     @Override
     public void characters(char[] ch, int start, int length) {
-        currentElement.add(new String(ch, start, length));
+        currentElement.add(ch, start, length);
     }
 }
