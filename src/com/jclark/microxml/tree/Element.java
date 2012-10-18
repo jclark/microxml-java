@@ -608,11 +608,18 @@ public class Element implements Iterable<Element> {
      * @throws IndexOutOfBoundsException if an index is out of range
      */
     public Location getTextLocation(int chunkIndex, int beginIndex, int endIndex) {
-        if (beginIndex > endIndex || beginIndex < 0 || endIndex > getText(chunkIndex).length())
-            throw new IndexOutOfBoundsException();
+        // Check argument validity
+        getAbsoluteStartIndex(chunkIndex, beginIndex, endIndex);
         return null;
     }
 
+    protected int getAbsoluteStartIndex(int chunkIndex, int startIndex, int endIndex) {
+        int chunkStartIndex = getTextChunkStartIndex(chunkIndex);
+        int chunkEndIndex = getTextChunkEndIndex(chunkIndex);
+        if (startIndex < 0 || endIndex > chunkEndIndex - chunkStartIndex)
+            throw new IndexOutOfBoundsException();
+        return chunkStartIndex + startIndex;
+    }
     /**
      * Called when a range of characters in the content are about to change.
      *
@@ -623,4 +630,9 @@ public class Element implements Iterable<Element> {
     protected void textChanging(int start, int end, int length) {
         // do nothing
     }
+
+    protected final int getTextLength() {
+        return textLength;
+    }
+
 }

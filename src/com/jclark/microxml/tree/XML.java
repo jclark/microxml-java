@@ -1,5 +1,6 @@
 package com.jclark.microxml.tree;
 
+import com.sun.org.apache.xml.internal.security.keys.storage.StorageResolver;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 
@@ -42,17 +43,25 @@ public class XML {
         }
     }
 
+    enum ParseOption {
+        STORE_LOCATIONS
+    }
     /**
      * Parses an XML File into an Element.
      * No namespace processing is performed.
      *
      * @param f the File to parse
+     * @param options an array of ParseOptions to control parsing
      * @return an Element
      * @throws IOException if an I/O error occurs
      * @throws ParseException if the file is not well-formed XML
      */
-    static public Element parse(File f) throws IOException, ParseException {
-        BuildHandler builder = new BuildHandler();
+    static public Element parse(File f, ParseOption[] options) throws IOException, ParseException {
+        boolean storeLocations = false;
+        for (ParseOption option : options)
+            if (ParseOption.STORE_LOCATIONS.equals(option))
+                storeLocations = true;
+        BuildHandler builder = storeLocations ? new LocationBuildHandler() : new BuildHandler();
         try {
             ParserFactory.newParser().parse(f, builder);
         }
