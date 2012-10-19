@@ -3,9 +3,10 @@ package com.jclark.microxml.tree;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.AbstractList;
 import java.util.Arrays;
-import java.util.ConcurrentModificationException;
-import java.util.Iterator;
+import java.util.List;
+import java.util.RandomAccess;
 
 /**
  * An element having a name, attributes and content.
@@ -23,7 +24,7 @@ import java.util.Iterator;
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
  */
 
-public class Element implements Iterable<Element>, Cloneable {
+public class Element implements Cloneable, Appendable {
     private static char[] EMPTY_TEXT = new char[0];
     private static final int INITIAL_TEXT_CAPACITY = 8;
 
@@ -35,25 +36,21 @@ public class Element implements Iterable<Element>, Cloneable {
     private int indexInParent;
     // index in the text array of its parent; undefined if not attached
     private int charIndexInParent;
-    @Nullable
+    @NotNull
     private AttributeSet attributeSet;
 
-    // The number of child elements.
-    private int numChildElements;
+    static private final ChildElementList EMPTY_CHILDREN = new ChildElementList(null);
+    static private final AttributeSet EMPTY_ATTRIBUTES = new HashAttributeSet();
 
-    // An array containing the child elements.
-    // If numChildElements is 0, maybe null.
-    private Element[] childElements;
+    private ChildElementList childElements = EMPTY_CHILDREN;
 
     // An array containing all the text.
     @NotNull
     private char[] text;
 
     // Total number of characters of content (stored in text)
-    int textLength;
+    private int textLength;
 
-    // Used to provide fail-fast behaviour for iterators.
-    private int modCount = 0;
 
     /**
      * Creates an Element with a given name.
@@ -61,7 +58,7 @@ public class Element implements Iterable<Element>, Cloneable {
      * @param name the name of the Element
      */
     public Element(@NotNull String name) {
-        this(name, null);
+        this(name, EMPTY_ATTRIBUTES);
     }
 
     /**
@@ -70,14 +67,13 @@ public class Element implements Iterable<Element>, Cloneable {
      * @param name the name of the Element to be created
      * @param attributeSet the attributes of the Element to be created; may be null
      */
-    public Element(@NotNull String name, @Nullable AttributeSet attributeSet) {
+    public Element(@NotNull String name, @NotNull AttributeSet attributeSet) {
         checkNotNull(name);
         this.name = name;
         this.attributeSet = attributeSet;
         parent = null;
         indexInParent = -1;
-        numChildElements = 0;
-        childElements = null;
+        childElements = EMPTY_CHILDREN;
         text = EMPTY_TEXT;
         textLength = 0;
     }
@@ -87,14 +83,11 @@ public class Element implements Iterable<Element>, Cloneable {
             Element cloned = (Element)super.clone();
             cloned.parent = null;
             cloned.indexInParent = -1;
-            cloned.attributeSet = attributeSet.clone();
+            if (attributeSet != EMPTY_ATTRIBUTES)
+                cloned.attributeSet = attributeSet.clone();
             cloned.text = text.length == 0 ? EMPTY_TEXT : Arrays.copyOf(text, textLength);
-            cloned.modCount = 0;
-            cloned.childElements = numChildElements == 0 ? null : new Element[numChildElements];
-            for (int i = 0; i < numChildElements; i++) {
-                cloned.childElements[i] = childElements[i].clone();
-                cloned.attach(cloned.childElements[i], i, childElements[i].charIndexInParent);
-            }
+            if (childElements != EMPTY_CHILDREN)
+                cloned.childElements = new ChildElementList(cloned, childElements);
             return cloned;
         }
         catch (CloneNotSupportedException e) {
@@ -126,9 +119,16 @@ public class Element implements Iterable<Element>, Cloneable {
      */
     @NotNull
     public AttributeSet attributes() {
-        if (attributeSet == null)
+        if (attributeSet == EMPTY_ATTRIBUTES)
             attributeSet = new HashAttributeSet();
         return attributeSet;
+    }
+
+    @NotNull
+    public List<Element> children() {
+        if (childElements == EMPTY_CHILDREN)
+            childElements = new ChildElementList(this);
+        return childElements;
     }
 
     /**
@@ -139,7 +139,26 @@ public class Element implements Iterable<Element>, Cloneable {
      * @return true if this Element has one or more Attributes
      */
     public boolean hasAttributes() {
-        return attributeSet != null && !attributeSet.isEmpty();
+        return !attributeSet.isEmpty();
+    }
+
+    public boolean hasContent() {
+        return textLength > 0 || !childElements.isEmpty();
+    }
+
+    /**
+     * Returns true if this Element has one or more child elements.
+     */
+    public boolean hasChildren() {
+        return !childElements.isEmpty();
+    }
+
+    /**
+     * Returns true if this Element's content contains one or more characters.
+     * @return true if this Element's content contains one or more characters
+     */
+    public boolean hasText() {
+        return textLength > 0;
     }
 
     /**
@@ -195,129 +214,196 @@ public class Element implements Iterable<Element>, Cloneable {
             throw new NullPointerException();
     }
 
-    /**
-     * Returns true if the content of this Element is empty.
-     * The content is empty if it has neither characters nor child elements.
-     * @return  true if the content of this Element is empty.
-     */
-    public boolean isEmpty() {
-        return numChildElements == 0 && textLength == 0;
-    }
+    private static class ChildElementList extends AbstractList<Element> implements RandomAccess {
+        static final int INITIAL_CAPACITY = 8;
+        static final Element[] EMPTY = new Element[0];
 
-    /**
-     * Returns the number of child Elements.
-     * @return the number of child Elements
-     */
-    public int elementCount() {
-        return numChildElements;
-    }
+        // The number of child elements.
+        int length;
+        // An array containing the child elements.
+        @NotNull
+        Element[] elements;
+        final Element owner;
 
-    /**
-     * Adds an Element on to the end of the list.
-     * The number of Elements is increased by 1.
-     * The element to be added must not have a parent.
-     *
-     * @param element the element to be added; must not be null
-     * @throws NullPointerException if element is null
-     * @throws IllegalArgumentException if element already has a parent
-     */
-    public void add(@NotNull Element element) {
-        modCount++;
-        ensureCapacity(numChildElements + 1);
-        attach(element, numChildElements, textLength);
-        childElements[numChildElements++] = element;
-    }
 
-    public void ensureCapacity(int minCapacity) {
-        int newLength;
-        if (childElements == null)
-            newLength = 8;
-        else if (childElements.length >= minCapacity)
-            return;
-        else
-            newLength = childElements.length * 2;
-        if (newLength < minCapacity) {
-            if (minCapacity == Integer.MAX_VALUE)
-                throw new IllegalArgumentException();
-            newLength = minCapacity;
+        ChildElementList(Element owner) {
+            this.owner = owner;
+            length = 0;
+            elements = EMPTY;
         }
-        if (childElements == null)
-            childElements = new Element[newLength];
-        else
-            childElements = Arrays.copyOf(childElements, newLength);
-    }
 
-    public class ContentIterator implements Iterator<Element> {
-        private int nextIndex = 0;
-        private int lastReturned = -1;
-        private int expectedModCount = modCount;
-
-        public boolean hasNext() {
-            checkModCount();
-            return nextIndex < numChildElements;
+        ChildElementList(Element owner, ChildElementList list) {
+            this.owner = owner;
+            if (list.length == 0)
+                elements = EMPTY;
+            else {
+                elements = new Element[list.length];
+                for (int i = 0; i < list.length; i++) {
+                    elements[i] = list.elements[i].clone();
+                    owner.attach(elements[i], i, list.elements[i].charIndexInParent);
+                }
+            }
+            length = list.length;
         }
 
         /**
-         * Returns the text before the element to be returned by next().
-         * @return the text chunk before the element to be returned by next()
+         * Returns the number of Elements in this List.
+         * @return the number of Elements in this List.
          */
-        public String getText() {
-            return Element.this.getText(nextIndex);
+        public int size() {
+            return length;
         }
 
-        public Element next() {
-            checkModCount();
-            return childElements[lastReturned = nextIndex++];
+        /**
+         * Returns the child Element at a specified position.
+         *
+         * @param index the position of the child Element to be returned
+         * @return the child Element at the position; never null
+         * @throws IndexOutOfBoundsException if index is not a valid position
+         */
+        @NotNull
+        public Element get(int index) {
+            checkIndex(index);
+            return elements[index];
         }
 
-        public void remove() {
-            if (lastReturned == -1)
-                throw new IllegalStateException();
-            checkModCount();
-            Element.this.remove(lastReturned);
-            --nextIndex;
-            expectedModCount = modCount;
-            lastReturned = -1;
+        /**
+         * Adds an Element on to the end of the list.
+         * The number of Elements is increased by 1.
+         * The element to be added must not have a parent.
+         *
+         * @param element the element to be added; must not be null
+         * @throws NullPointerException if element is null
+         * @throws IllegalArgumentException if element already has a parent
+         */
+        public boolean add(@NotNull Element element) {
+            checkNotNull(element);
+            modCount++;
+            ensureCapacity(length + 1);
+            owner.attach(element, length, owner.textLength);
+            elements[length++] = element;
+            return true;
         }
 
-        private void checkModCount() {
-            if (expectedModCount != modCount)
-                throw new ConcurrentModificationException();
+        public void ensureCapacity(int minCapacity) {
+            if (elements.length >= minCapacity)
+                return;
+            int newLength = elements.length == 0 ? INITIAL_CAPACITY : elements.length*2;
+            if (newLength < minCapacity)
+                newLength = minCapacity;
+            elements = Arrays.copyOf(elements, newLength);
         }
-    }
 
-    /**
-     * Returns a new Iterator that iterates over the Elements in this ContentList.
-     * @return an Iterator for the Elements in the list
-     */
-    public Iterator<Element> iterator() {
-        return new ContentIterator();
-    }
+        public void clear() {
+            if (length == 0)
+                return;
+            modCount++;
+            for (int i = 0; i < length; i++)
+                elements[i].detach();
+            elements = EMPTY;
+            length = 0;
+        }
 
-    /**
-     * Returns the child Element at a specified position.
-     *
-     * @param index the position of the child Element to be returned
-     * @return the child Element at the position; never null
-     * @throws IndexOutOfBoundsException if index is not a valid position
-     */
-    @NotNull
-    public Element get(int index) {
-        checkElementIndex(index);
-        return childElements[index];
+        /**
+         * Replaces the Element at a specified position.
+         * @param index the position for the Element to be replaced
+         * @param element the replacement Element; must not be null
+         * @return the Element previously at the position, or null if none
+         * @throws IllegalArgumentException if element already has a parent
+         * @throws NullPointerException if element is null
+         */
+        @NotNull
+        public Element set(int index, @NotNull Element element) {
+            checkIndex(index);
+            checkNotNull(element);
+            Element old = elements[index];
+            int charIndex = old.charIndexInParent;
+            // Detach the old element first, in case we are replacing it by itself.
+            old.detach();
+            owner.attach(element, index, charIndex);
+            elements[index] = element;
+            return old;
+        }
+
+        /**
+         * Inserts an Element at a specified position.
+         * All Elements with position >= index will have their position increased by 1.
+         * @param index the position for the Element to be inserted
+         * @param element the Element to be inserted; must not be null
+         * @throws IllegalArgumentException if element already has a parent
+         * @throws NullPointerException if element is null
+         */
+        public void add(int index, @NotNull Element element) {
+            if (index == length) {
+                add(element);
+                return;
+            }
+            checkNotNull(element);
+            checkIndex(index);
+            int charIndex;
+            if (index == length)
+                charIndex = owner.textLength;
+            else
+                charIndex = elements[index].charIndexInParent;
+            modCount++;
+            ensureCapacity(length + 1);
+            for (int i = length; i > index; --i) {
+                Element e = elements[i - 1];
+                elements[i] = e;
+                e.indexInParent = i;
+            }
+            owner.attach(element, index, charIndex);
+            elements[index] = element;
+        }
+
+        /**
+         * Removes the child Element at a specified position.
+         * The removed Element is detached from its parent.
+         * No characters are removed;
+         * thus the text chunks immediately before and after the element are joined.
+         * @param index the position of the Element to be removed
+         * @return the Element that was removed
+         */
+        @NotNull
+        public Element remove(int index) {
+            checkIndex(index);
+            ++modCount;
+            Element old = elements[index];
+            old.detach();
+            for (int i = index; i < length - 1; i++) {
+                Element e = elements[i + 1];
+                e.indexInParent = i;
+                elements[i] = e;
+            }
+            elements[length - 1] = null;
+            // Don't need to do anything to text.
+            length -= 1;
+            return old;
+        }
+
+        void checkIndex(int index) {
+            if (index >= length)
+                throw new IndexOutOfBoundsException();
+        }
+
+        void clearCharIndexInParent() {
+            for (int i = 0; i < length; i++)
+                elements[i].charIndexInParent = 0;
+        }
+
+        void incCharIndexInParent(int startIndex, int endIndex, int inc) {
+            for (; startIndex < endIndex; startIndex++)
+                elements[startIndex].charIndexInParent += inc;
+        }
     }
 
     /**
      * Removes all content.
      */
-    public void clear() {
+    public void clearContent() {
         if (textLength > 0)
             textChanging(0, textLength, 0);
-        modCount++;
-        for (int i = 0; i < numChildElements; i++)
-            childElements[i].detach();
-        childElements = null;
-        numChildElements = 0;
+        childElements.clear();
         text = EMPTY_TEXT;
         textLength = 0;
     }
@@ -329,93 +415,83 @@ public class Element implements Iterable<Element>, Cloneable {
         if (textLength == 0)
             return;
         textChanging(0, textLength, 0);
-        for (int i = 0; i < numChildElements; i++)
-            childElements[i].charIndexInParent = 0;
+        childElements.clearCharIndexInParent();
         text = EMPTY_TEXT;
         textLength = 0;
     }
 
     /**
-     * Replaces the Element at a specified position.
-     * @param index the position for the Element to be replaced
-     * @param element the replacement Element; must not be null
-     * @return the Element previously at the position, or null if none
-     * @throws IllegalArgumentException if element already has a parent
-     * @throws NullPointerException if element is null
+     * Adds an Element to the list of children.
+     * Equivalent to <tt>children().add(element)</tt.>
+     * @param element
+     * @return this Element
      */
-    public Element set(int index, @NotNull Element element) {
-        checkElementIndex(index);
-        checkNotNull(element);
-        Element old = childElements[index];
-        int charIndex = old.charIndexInParent;
-        // Detach the old element first, in case we are replacing it by itself.
-        old.detach();
-        attach(element, index, charIndex);
-        childElements[index] = element;
-        return old;
-    }
-
-    /**
-     * Inserts an Element at a specified position.
-     * All Elements with position >= index will have their position increased by 1.
-     * @param index the position for the Element to be inserted
-     * @param element the Element to be inserted; must not be null
-     * @throws IllegalArgumentException if element already has a parent
-     * @throws NullPointerException if element is null
-     */
-    public void add(int index, @NotNull Element element) {
-        if (index == numChildElements) {
-            add(element);
-            return;
-        }
-        checkNotNull(element);
-        checkElementIndex(index);
-        int charIndex;
-        if (index == numChildElements)
-            charIndex = textLength;
-        else
-            charIndex = childElements[index].charIndexInParent;
-        modCount++;
-        ensureCapacity(numChildElements + 1);
-        for (int i = numChildElements; i > index; --i) {
-            Element e = childElements[i - 1];
-            childElements[i] = e;
-            e.indexInParent = i;
-        }
-        attach(element, index, charIndex);
-        childElements[index] = element;
+    public Element append(Element element) {
+        children().add(element);
+        return this;
     }
 
     /**
      * Adds characters at the end of the content of this Element.
-     * @param str a String with the characters to add; must not be empty
+     * @param csq a CharSequence with the characters to add; must not be empty
+     * @return this Element
      */
-    public void add(@NotNull String str) {
-        int length = str.length();
+    public Element append(CharSequence csq) {
+        if (csq == null)
+            csq = "null";
+        int length = csq.length();
         ensureTextCapacity(textLength + length);
         textChanging(textLength, textLength, length);
-        str.getChars(0, length, text, textLength);
-        textLength += length;
+        if (csq instanceof String) {
+            ((String)csq).getChars(0, length, text, textLength);
+            textLength += length;
+
+        }
+        else {
+            for (int i = 0; i < length; i++) {
+                text[textLength] = csq.charAt(i);
+                textLength++;
+            }
+        }
+        return this;
+    }
+
+    /**
+     * {@inheritDoc}
+     * @return a reference to this Element
+     */
+    public Element append(CharSequence csq, int start, int end) {
+        int length = end - start;
+        if (length < 0 || start < 0 || end > textLength)
+            throw new IndexOutOfBoundsException();
+        ensureTextCapacity(textLength + length);
+        textChanging(textLength, textLength, length);
+        for (; start < end; start++)
+            text[textLength++] = csq.charAt(start);
+        return this;
     }
 
     /**
      * Adds a character at the end of the content of this Element.
      *
      * @param c the character to be added.
+     * @return this Element
      */
-    public void add(char c) {
+    public Element append(char c) {
         ensureTextCapacity(textLength + 1);
         textChanging(textLength, textLength, 1);
         text[textLength++] = c;
+        return this;
     }
 
-    public void add(char[] buf, int offset, int length) {
+    public Element append(char[] buf, int offset, int length) {
         if (length < 0 || offset < 0 || offset + length > buf.length)
             throw new IndexOutOfBoundsException();
         ensureTextCapacity(textLength + length);
         textChanging(textLength, textLength, length);
         System.arraycopy(buf, offset, text, textLength, length);
         textLength += length;
+        return this;
     }
 
     private void ensureTextCapacity(int minCapacity) {
@@ -429,14 +505,6 @@ public class Element implements Iterable<Element>, Cloneable {
         if (newLength < minCapacity)
             newLength = minCapacity;
         text = Arrays.copyOf(text, newLength);
-    }
-
-    /**
-     * Returns true if this Element's content contains one or more characters.
-     * @return true if this Element's content contains one or more characters
-     */
-    public boolean hasText() {
-        return textLength > 0;
     }
 
     /**
@@ -477,20 +545,25 @@ public class Element implements Iterable<Element>, Cloneable {
         return startIndex == endIndex ? "" : new String(text, startIndex, endIndex - startIndex);
     }
 
-    private int getTextChunkStartIndex(int index) {
-        if (index <= 0) {
-            if (index < 0)
-                throw new IndexOutOfBoundsException();
-            return 0;
-        }
-        if (index > numChildElements)
-            throw new IndexOutOfBoundsException();
-        return childElements[index - 1].charIndexInParent;
+    /**
+     * Returns the text chunk immediately before this element.
+     * @return the text immediately before this element.
+     */
+    public String getTextBefore() {
+        if (parent == null)
+            return "";
+        return parent.getText(indexInParent);
     }
 
-    // This assumes that index is in bounds
-    private int getTextChunkEndIndex(int index) {
-        return index == numChildElements ? textLength : childElements[index].charIndexInParent;
+    /**
+     * Returns the text chunk immediately after this element.
+     * This contains all characters after this element up to the next element (if there is one).
+     * @return the text immediately after this element.
+     */
+    public String getTextAfter() {
+        if (parent == null)
+            return "";
+        return parent.getText(indexInParent + 1);
     }
 
     /**
@@ -511,81 +584,25 @@ public class Element implements Iterable<Element>, Cloneable {
         // Copy new characters
         str.getChars(0, strLength, text, startIndex);
         if (textLength != newTextLength) {
-            int inc = newTextLength - textLength;
-            for (; index < numChildElements; index++)
-                childElements[index].charIndexInParent += inc;
+            childElements.incCharIndexInParent(index, childElements.size(), newTextLength - textLength);
             textLength = newTextLength;
         }
     }
 
-    /**
-     * Removes the child Element at a specified position.
-     * The removed Element is detached from its parent.
-     * No characters are removed;
-     * thus the text chunks immediately before and after the element are joined.
-     * @param index the position of the Element to be removed
-     * @return the Element that was removed
-     */
-    public Element remove(int index) {
-        checkElementIndex(index);
-        ++modCount;
-        Element old = childElements[index];
-        old.detach();
-        for (int i = index; i < numChildElements - 1; i++) {
-            Element e = childElements[i + 1];
-            e.indexInParent = i;
-            childElements[i] = e;
-        }
-        childElements[numChildElements - 1] = null;
-        // Don't need to do anything to text.
-        numChildElements -= 1;
-        return old;
+    private int getTextChunkStartIndex(int index) {
+         if (index <= 0) {
+             if (index < 0)
+                 throw new IndexOutOfBoundsException();
+             return 0;
+         }
+         if (index > childElements.length)
+             throw new IndexOutOfBoundsException();
+         return childElements.elements[index - 1].charIndexInParent;
     }
 
-    /**
-     * Removes count elements starting at start.
-     * Text between the removed elements is also removed.
-     * @param start the index of the first element to remove
-     * @param count the number of elements to remove
-     */
-    public void remove(int start, int count) {
-        if (count < 2) {
-            if (count == 1) {
-                remove(start);
-                return;
-            }
-            if (count == 0)
-                return;
-            throw new IndexOutOfBoundsException();
-        }
-        checkElementIndex(start);
-        modCount++;
-        int end = start + count;
-        // Remove the text chars
-        int textStartIndex = childElements[start].indexInParent;
-        int textEndIndex = childElements[end - 1].indexInParent;
-        textChanging(textStartIndex, textEndIndex, 0);
-        int removedCharCount = textEndIndex - textStartIndex;
-        System.arraycopy(text, textEndIndex, text, textStartIndex, textLength - textEndIndex);
-        textEndIndex -= removedCharCount;
-        // Detach the elements that will be removed
-        for (int i = start; i < end; i++)
-            childElements[i].detach();
-        // Move the following elements into place
-        for (int src = end, dst = start; src < numChildElements; src++, dst++) {
-            Element e = childElements[src];
-            e.indexInParent = dst;
-            e.charIndexInParent -= removedCharCount;
-            childElements[dst] = e;
-        }
-        int newSize = numChildElements - count;
-        Arrays.fill(childElements, newSize, numChildElements, null);
-        numChildElements = newSize;
-    }
-
-    private void checkElementIndex(int index) {
-        if (index >= numChildElements)
-            throw new IndexOutOfBoundsException();
+    // This assumes that index is in bounds
+    private int getTextChunkEndIndex(int index) {
+        return index == childElements.length ? textLength : childElements.elements[index].charIndexInParent;
     }
 
     /* Locations */
@@ -632,6 +649,7 @@ public class Element implements Iterable<Element>, Cloneable {
             throw new IndexOutOfBoundsException();
         return chunkStartIndex + startIndex;
     }
+
     /**
      * Called when a range of characters in the content are about to change.
      *
@@ -646,5 +664,4 @@ public class Element implements Iterable<Element>, Cloneable {
     protected final int getTextLength() {
         return textLength;
     }
-
 }

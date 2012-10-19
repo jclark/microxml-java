@@ -9,6 +9,9 @@ import java.util.Arrays;
 /**
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
  */
+
+// TODO: this implementation is flawed because a SAX Locator gives us the position at the end of the Event
+// TODO: probably not worth storing information about position of whitespace
 class LocationBuildHandler extends BuildHandler {
     private Locator locator = null;
     private UrlList urlList = new UrlList();

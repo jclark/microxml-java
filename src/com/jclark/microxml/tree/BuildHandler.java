@@ -1,6 +1,7 @@
 package com.jclark.microxml.tree;
 
 import org.xml.sax.Attributes;
+import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
@@ -27,7 +28,7 @@ class BuildHandler extends DefaultHandler {
         if (currentElement == null)
             root = elem;
         else
-            currentElement.add(elem);
+            currentElement.children().add(elem);
         currentElement = elem;
         // Avoid creating the AttributeSet object unnecessarily.
         if (elem.hasAttributes()) {
@@ -45,6 +46,11 @@ class BuildHandler extends DefaultHandler {
 
     @Override
     public void characters(char[] ch, int start, int length) {
-        currentElement.add(ch, start, length);
+        currentElement.append(ch, start, length);
+    }
+
+    @Override
+    public void ignorableWhitespace(char[] ch, int start, int length) {
+        characters(ch, start, length);
     }
 }

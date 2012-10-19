@@ -1,8 +1,10 @@
 package com.jclark.microxml.tree;
 
 import java.io.IOException;
+import java.lang.annotation.ElementType;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 
 /**
  * Helper class for serializing MicroXML.
@@ -18,22 +20,22 @@ public class SerializeUtil {
             for (Attribute attr : element.attributes())
                 serialize(attr, a);
         }
-        if (element.isEmpty())
-            a.append('/').append('>');
-        else {
+        if (element.hasContent()) {
             a.append('>');
-            int count = element.elementCount();
-            String text = element.getText(0);
-            if (!text.isEmpty())
-                serialize(text, a);
-            for (int i = 0; i < count;) {
-                serialize(element.get(i), a);
-                text = element.getText(++i);
-                if (!text.isEmpty())
-                    serialize(text, a);
+            boolean hasText = element.hasText();
+            if (hasText)
+                serialize(element.getText(0), a);
+            if (element.hasChildren()) {
+                for (Element child : element.children()) {
+                    serialize(child, a);
+                    if (hasText)
+                        serialize(child.getTextAfter(), a);
+                }
             }
             a.append('<').append('/').append(element.getName()).append('>');
         }
+        else
+            a.append('/').append('>');
     }
 
     static public void canonicalize(Element element, Appendable a, Attribute[] attributeBuffer) throws IOException {
@@ -53,15 +55,15 @@ public class SerializeUtil {
                 serialize(attrs[i], a);
         }
         a.append('>');
-        int count = element.elementCount();
-        String text = element.getText(0);
-        if (!text.isEmpty())
-            serialize(text, a);
-        for (int i = 0; i < count;) {
-            canonicalize(element.get(i), a, attributeBuffer);
-            text = element.getText(++i);
-            if (!text.isEmpty())
-                serialize(text, a);
+        boolean hasText = element.hasText();
+        if (hasText)
+            serialize(element.getText(0), a);
+        if (element.hasChildren()) {
+            for (Element child : element.children()) {
+                canonicalize(child, a, attributeBuffer);
+                if (hasText)
+                    serialize(child.getTextAfter(), a);
+            }
         }
         a.append('<').append('/').append(element.getName()).append('>');
     }

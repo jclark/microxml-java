@@ -2,6 +2,9 @@ package com.jclark.microxml.tree;
 
 import org.testng.annotations.Test;
 
+import java.util.List;
+
+import static org.testng.Assert.assertFalse;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertNull;
 import static org.testng.AssertJUnit.assertTrue;
@@ -24,15 +27,15 @@ public class ElementTest {
         assertNull(e.getParent());
         assertEquals(e.getIndexInParent(), -1);
         assertEquals(e.getName(), "x");
-        assertEquals(e.elementCount(), 0);
+        assertFalse(e.hasChildren());
         assertEquals(e.getText(0), "");
-        e.add("Hello");
-        assertEquals(e.elementCount(), 0);
+        e.append("Hello");
+        assertFalse(e.hasChildren());
         assertEquals(e.getText(0), "Hello");
         Element child = new Element("y");
-        e.add(child);
-        assertEquals(e.elementCount(), 1);
-        assertTrue(e.get(0) == child);
+        e.children().add(child);
+        assertEquals(e.children().size(), 1);
+        assertTrue(e.children().get(0) == child);
         assertTrue(child.getParent() == e);
         assertEquals(child.getIndexInParent(), 0);
         assertEquals(e.getText(0), "Hello");
@@ -47,30 +50,32 @@ public class ElementTest {
     @Test
     public void testLarge() throws Exception {
         Element root = new Element("root");
+        List<Element> children = root.children();
         final int N = 100000;
         for (int i = 0; i < N; i++)
-            root.add(new Element("x" + Integer.toString(i)));
-        assertEquals(root.elementCount(), N);
+            children.add(new Element("x" + Integer.toString(i)));
+        assertEquals(root.children().size(), N);
         for (int i = 0; i < N; i++)
-            assertEquals(root.get(i).getName(),
+            assertEquals(children.get(i).getName(),
                          "x" + Integer.toString(i));
     }
 
     @Test
     public void testRemove() throws Exception {
         Element root = new Element("root");
+        List<Element> children = root.children();
         final int N = 10;
         for (int i = 0; i < N; i++)
-            root.add(new Element("x" + Integer.toString(i)));
-        Element e5 = root.get(5);
-        Element removed = root.remove(5);
+            children.add(new Element("x" + Integer.toString(i)));
+        Element e5 = children.get(5);
+        Element removed = children.remove(5);
         assertNull(removed.getParent());
         assertEquals(removed.getIndexInParent(), -1);
-        assertEquals(root.elementCount(), N - 1);
+        assertEquals(children.size(), N - 1);
         assertTrue(removed == e5);
         for (int i = 5; i < N - 1; i++)
-            assertEquals(root.get(i).getName(), "x" + Integer.toString(i + 1));
+            assertEquals(children.get(i).getName(), "x" + Integer.toString(i + 1));
         for (int i = 0; i < 5; i++)
-            assertEquals(root.get(i).getName(), "x" + Integer.toString(i));
+            assertEquals(children.get(i).getName(), "x" + Integer.toString(i));
     }
 }
