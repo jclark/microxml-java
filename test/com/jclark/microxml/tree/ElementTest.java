@@ -47,7 +47,7 @@ public class ElementTest {
     @Test
     public void testLarge() throws Exception {
         Element root = new Element("root");
-        final int N = 1000000;
+        final int N = 100000;
         for (int i = 0; i < N; i++)
             root.add(new Element("x" + Integer.toString(i)));
         assertEquals(root.elementCount(), N);
