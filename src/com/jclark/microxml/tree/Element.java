@@ -23,9 +23,7 @@ import java.util.Iterator;
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
  */
 
-// TODO: compare document order
-// TODO: trimToSize
-public class Element implements Iterable<Element> {
+public class Element implements Iterable<Element>, Cloneable {
     private static char[] EMPTY_TEXT = new char[0];
     private static final int INITIAL_TEXT_CAPACITY = 8;
 
@@ -84,21 +82,23 @@ public class Element implements Iterable<Element> {
         textLength = 0;
     }
 
-    public Element(@NotNull Element element) {
-        checkNotNull(element);
-        name = element.name;
-        parent = null;
-        indexInParent = -1;
-        attributeSet = element.attributeSet == null ? null : element.attributeSet.clone();
-        numChildElements = element.numChildElements;
-        text = Arrays.copyOf(text, textLength);
-        textLength = element.textLength;
-        childElements = numChildElements == 0 ? null : new Element[numChildElements];
-        for (int i = 0; i < numChildElements; i++) {
-            Element childElement = element.childElements[i];
-            Element e = new Element(childElement);
-            attach(e, i, childElement.charIndexInParent);
-            childElements[i] = e;
+    public Element clone() {
+        try {
+            Element cloned = (Element)super.clone();
+            cloned.parent = null;
+            cloned.indexInParent = -1;
+            cloned.attributeSet = attributeSet.clone();
+            cloned.text = text.length == 0 ? EMPTY_TEXT : Arrays.copyOf(text, textLength);
+            cloned.modCount = 0;
+            cloned.childElements = numChildElements == 0 ? null : new Element[numChildElements];
+            for (int i = 0; i < numChildElements; i++) {
+                cloned.childElements[i] = childElements[i].clone();
+                cloned.attach(cloned.childElements[i], i, childElements[i].charIndexInParent);
+            }
+            return cloned;
+        }
+        catch (CloneNotSupportedException e) {
+            throw new InternalError();
         }
     }
 
@@ -150,6 +150,18 @@ public class Element implements Iterable<Element> {
     @Nullable
     public Element getParent() {
         return parent;
+    }
+
+    /**
+     * Returns the root Element.
+     * @return the root Element, never null
+     */
+    @NotNull
+    public Element getRoot() {
+        Element root = this;
+        while (root.parent != null)
+            root = root.parent;
+        return root;
     }
 
     /**
