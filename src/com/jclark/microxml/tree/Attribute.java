@@ -53,7 +53,7 @@ public class Attribute implements Cloneable {
     @Override
     public Attribute clone() {
         try {
-        return (Attribute) super.clone();
+            return (Attribute)super.clone();
         }
         catch (CloneNotSupportedException e) {
             throw new InternalError();
