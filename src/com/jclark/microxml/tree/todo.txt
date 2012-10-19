@@ -1,0 +1,16 @@
+Method on Element to compare document order of two elements.
+
+It would be nice if it was possible to share a superclass with an immutable implementation.
+
+trimToSize on Element and AttributeSet
+
+hashCode/equals methods on Element. No! Since we have parent, identity should be object identity.
+
+Some sort of simple path language that addresses elements: probably extended subset of CSS3 selectors.
+
+Be able to associate elements with a syntax: class, lang, parse serialize, case sensitivity. Elements in the
+same tree should have the same syntax.
+
+Property like innerHTML.
+
+Keep a cache of an Element's text as a String. For a text chunk return a substring of the cached string.
