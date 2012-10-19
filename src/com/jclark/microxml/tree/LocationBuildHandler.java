@@ -188,12 +188,13 @@ class LocationBuildHandler extends BuildHandler {
 
     @Override
     protected Element createElement(String qName) {
-        return new LocatedElement(qName, urlList, locator);
+        return locator == null ? super.createElement(qName) : new LocatedElement(qName, urlList, locator);
     }
 
     @Override
     public void endElement(String uri, String localName, String qName) {
-        ((LocatedElement)currentElement).setEndTagLocation(locator);
+        if (locator != null)
+            ((LocatedElement)currentElement).setEndTagLocation(locator);
         super.endElement(uri, localName, qName);
     }
 
@@ -201,7 +202,8 @@ class LocationBuildHandler extends BuildHandler {
     public void characters(char[] ch, int start, int length) {
         if (length == 0)
             return;
-        ((LocatedElement)currentElement).addTextLocation(locator);
+        if (locator != null)
+            ((LocatedElement)currentElement).addTextLocation(locator);
         super.characters(ch, start, length);
     }
 }
