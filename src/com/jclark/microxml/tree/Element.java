@@ -668,6 +668,45 @@ public class Element implements Cloneable, Appendable {
         return index == childElements.length ? textLength : childElements.elements[index].charIndexInParent;
     }
 
+    /**
+     * Tests whether two elements are equivalent. Two elements are equivalent if their names are equal, their attributes
+     * are equal and their content sequences are equivalent; two characters in a content sequence are equivalent if they
+     * are equal.
+     *
+     * @param e1 an element
+     * @param e2 an element
+     * @return true if e1 and e2 elements are equivalent
+     * @throws NullPointerException if e1 or e2 are null
+     */
+    public static boolean equivalent(@NotNull Element e1, @NotNull Element e2) {
+        if (e1 == e2) {
+            if (e1 == null)
+                throw new NullPointerException();
+            return true;
+        }
+        // check the things that are cheap to check first
+        // this will ensure a NullPointerException is thrown
+        if (!e1.name.equals(e2.name))
+            return false;
+        if (e1.textLength != e2.textLength)
+            return false;
+        if (e1.childElements.length != e2.childElements.length)
+            return false;
+        if (!e1.attributeSet.equals(e2.attributeSet))
+            return false;
+        char[] text1 = e1.text;
+        char[] text2 = e2.text;
+        for (int i = 0, len = e1.textLength; i < len; i++)
+            if (text1[i] != text2[i])
+                return false;
+        Element[] child1 = e1.childElements.elements;
+        Element[] child2 = e2.childElements.elements;
+        for (int i = 0, len = e1.childElements.length; i < len; i++)
+            if (!equivalent(child1[i], child2[i]) || child1[i].charIndexInParent != child2[i].charIndexInParent)
+                return false;
+        return true;
+    }
+
     // Locations
 
     /**
