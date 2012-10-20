@@ -7,6 +7,9 @@ import org.jetbrains.annotations.NotNull;
  *
  * Two attributes are equal if their names and values are equal.
  *
+ * This class does not provide location information.  A parser that is able to provide
+ * location information for attributes should subclass this class.
+ *
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
  */
 public class Attribute implements Cloneable {
@@ -23,22 +26,22 @@ public class Attribute implements Cloneable {
     }
 
     @NotNull
-    public String getName() {
+    public final String getName() {
         return name;
     }
 
     @NotNull
-    public String getValue() {
+    public final String getValue() {
         return value;
     }
 
-    public void setValue(@NotNull String value) {
+    public final void setValue(@NotNull String value) {
         Util.requireNonNull(value);
         this.value = value;
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public final boolean equals(Object obj) {
         if (this == obj)
             return true;
         if (obj == null || !(obj instanceof Attribute))
@@ -48,7 +51,7 @@ public class Attribute implements Cloneable {
     }
 
     @Override
-    public int hashCode() {
+    public final int hashCode() {
         return 31 * name.hashCode() + value.hashCode();
     }
 

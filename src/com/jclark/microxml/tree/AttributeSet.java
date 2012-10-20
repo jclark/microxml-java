@@ -31,8 +31,10 @@ public interface AttributeSet extends Set<Attribute> {
     Attribute remove(String name);
 
     /**
-     * Clones the AttributeSet.
-     * @return an AttributeSet that is equal to this Attribute but shares no structure
+     * Clones this AttributeSet.
+     * The returned AttributeSet will be equal to this AttributeSet but independent of it:
+     * modifications to one AttributeSet will not affect the other.
+     * @return an AttributeSet that is equal to this AttributeSet but shares no structure
      */
     AttributeSet clone();
 
