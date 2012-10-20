@@ -14,8 +14,8 @@ public class Attribute implements Cloneable {
     private String value;
 
     public Attribute(@NotNull String name, @NotNull String value) {
-        Element.checkNotNull(name);
-        Element.checkNotNull(value);
+        Util.requireNonNull(name);
+        Util.requireNonNull(value);
         this.name = name;
         this.value = value;
     }
@@ -31,7 +31,7 @@ public class Attribute implements Cloneable {
     }
 
     public void setValue(@NotNull String value) {
-        Element.checkNotNull(value);
+        Util.requireNonNull(value);
         this.value = value;
     }
 

@@ -2,6 +2,7 @@ package com.jclark.microxml.tree;
 
 import org.jetbrains.annotations.NotNull;
 import org.xml.sax.Locator;
+import org.xml.sax.SAXException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,11 +11,12 @@ import java.util.Arrays;
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
  */
 
-// TODO: this implementation is flawed because a SAX Locator gives us the position at the end of the Event
 // TODO: probably not worth storing information about position of whitespace
 class LocationBuildHandler extends BuildHandler {
     private Locator locator = null;
     private UrlList urlList = new UrlList();
+    private int[] lastLocation = null;
+    private boolean inDTD = false;
 
     static class SimpleLocation extends AbstractLocation {
         private final String url;
@@ -92,36 +94,33 @@ class LocationBuildHandler extends BuildHandler {
         int endLineNumber = -1;
         int endColumnNumber = -1;
 
-        LocatedElement(@NotNull String name, UrlList urlList, Locator locator) {
+        LocatedElement(@NotNull String name, UrlList urlList, int[] location) {
             super(name);
             this.urlList = urlList;
-            startUrlIndex = urlList.put(locator.getSystemId());
-            startLineNumber = locator.getLineNumber();
-            startColumnNumber = locator.getColumnNumber();
+            startUrlIndex = location[0];
+            startLineNumber = location[1];
+            startColumnNumber = location[2];
         }
 
-        void setEndTagLocation(Locator locator) {
-            endUrlIndex = urlList.put(locator.getSystemId());
-            endLineNumber = locator.getLineNumber();
-            endColumnNumber = locator.getColumnNumber();
+        void setEndTagLocation(int[] location) {
+            endUrlIndex = location[0];
+            endLineNumber = location[1];
+            endColumnNumber = location[2];
         }
 
-        void addTextLocation(Locator locator) {
-            String url = locator.getSystemId();
-            int lineNumber = locator.getLineNumber();
-            if (url == null && lineNumber < 0)
+        void addTextLocation(int[] location) {
+            if (location[0] < 0 && location[1] < 0)
                 return;
             if (numCharLocations == charLocations.length) {
                 if (numCharLocations == 0)
                     charLocations = new int[16];
                 else
                     charLocations = Arrays.copyOf(charLocations, numCharLocations * 2);
-
             }
             charLocations[numCharLocations++] = getTextLength();
-            charLocations[numCharLocations++] = urlList.put(url);
-            charLocations[numCharLocations++] = lineNumber;
-            charLocations[numCharLocations++] = locator.getColumnNumber();
+            for (int i = 0; i < 3; i++)
+                charLocations[numCharLocations++] = location[i];
+
         }
 
         @Override
@@ -205,17 +204,25 @@ class LocationBuildHandler extends BuildHandler {
     @Override
     public void setDocumentLocator(Locator locator) {
         this.locator = locator;
+        this.lastLocation = new int[3];
+        Arrays.fill(this.lastLocation, -1);
     }
 
     @Override
     protected Element createElement(String qName) {
-        return locator == null ? super.createElement(qName) : new LocatedElement(qName, urlList, locator);
+        if (lastLocation == null)
+            return super.createElement(qName);
+        Element element = new LocatedElement(qName, urlList, lastLocation);
+        saveLocation();
+        return element;
     }
 
     @Override
     public void endElement(String uri, String localName, String qName) {
-        if (locator != null)
-            ((LocatedElement)currentElement).setEndTagLocation(locator);
+        if (lastLocation != null) {
+            ((LocatedElement)currentElement).setEndTagLocation(lastLocation);
+            saveLocation();
+        }
         super.endElement(uri, localName, qName);
     }
 
@@ -223,8 +230,46 @@ class LocationBuildHandler extends BuildHandler {
     public void characters(char[] ch, int start, int length) {
         if (length == 0)
             return;
-        if (locator != null)
-            ((LocatedElement)currentElement).addTextLocation(locator);
+        if (lastLocation != null) {
+            ((LocatedElement)currentElement).addTextLocation(lastLocation);
+            saveLocation();
+        }
         super.characters(ch, start, length);
+    }
+
+    @Override
+    public void startDocument() throws SAXException {
+        saveLocation();
+    }
+
+    @Override
+    public void startDTD(String name, String publicId, String systemId) throws SAXException {
+        inDTD = true;
+    }
+
+    @Override
+    public void endDTD() throws SAXException {
+        inDTD = false;
+        saveLocation();
+    }
+
+    @Override
+    public void processingInstruction(String target, String data) {
+        if (!inDTD)
+            saveLocation();
+    }
+
+    @Override
+    public void comment(char[] ch, int start, int length) {
+        if (!inDTD)
+            saveLocation();
+    }
+
+    private void saveLocation() {
+        if (lastLocation == null)
+            return;
+        lastLocation[0] = urlList.put(locator.getSystemId());
+        lastLocation[1] = locator.getLineNumber();
+        lastLocation[2] = locator.getColumnNumber();
     }
 }

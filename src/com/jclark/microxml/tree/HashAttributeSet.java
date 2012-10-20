@@ -169,7 +169,7 @@ class HashAttributeSet extends AbstractSet<Attribute> implements AttributeSet, C
     }
 
     private int find(Object o) {
-        Element.checkNotNull(o);
+        Util.requireNonNull(o);
         Attribute att = (Attribute)o;
         String name = att.getName();
         int i = find(name);
@@ -180,7 +180,7 @@ class HashAttributeSet extends AbstractSet<Attribute> implements AttributeSet, C
 
     private int find(String name) {
         if (atts == null)
-            Element.checkNotNull(name);
+            Util.requireNonNull(name);
         else {
             int i = name.hashCode() & (atts.length - 1);
             while (atts[i] != null) {

@@ -2,6 +2,7 @@ package com.jclark.microxml.tree;
 
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
+import org.xml.sax.ext.DefaultHandler2;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
@@ -10,7 +11,7 @@ import org.xml.sax.helpers.DefaultHandler;
  *
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
  */
-class BuildHandler extends DefaultHandler {
+class BuildHandler extends DefaultHandler2 {
     protected Element root = null;
     protected Element currentElement = null;
 

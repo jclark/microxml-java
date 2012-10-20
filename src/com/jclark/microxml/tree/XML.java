@@ -2,7 +2,10 @@ package com.jclark.microxml.tree;
 
 import com.sun.org.apache.xml.internal.security.keys.storage.StorageResolver;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXNotRecognizedException;
+import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.SAXParseException;
+import org.xml.sax.XMLReader;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -11,7 +14,7 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * Provides functions for parsing XML into Elements.
+ * Provides functions for parsing XML into {@link Element}s.
  *
  * @see Element
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
@@ -43,9 +46,10 @@ public class XML {
         }
     }
 
-    enum ParseOption {
+    public enum ParseOption {
         STORE_LOCATIONS
     }
+
     /**
      * Parses an XML File into an Element.
      * No namespace processing is performed.
@@ -62,8 +66,15 @@ public class XML {
             if (ParseOption.STORE_LOCATIONS.equals(option))
                 storeLocations = true;
         BuildHandler builder = storeLocations ? new LocationBuildHandler() : new BuildHandler();
+        SAXParser parser = ParserFactory.newParser();
         try {
-            ParserFactory.newParser().parse(f, builder);
+            if (storeLocations) {
+                try {
+                    parser.getXMLReader().setProperty("http://xml.org/sax/properties/lexical-handler", builder);
+                }
+                catch (SAXException ignored) {}
+            }
+            parser.parse(f, builder);
         }
         catch (SAXException e) {
             throwSAXException(e);

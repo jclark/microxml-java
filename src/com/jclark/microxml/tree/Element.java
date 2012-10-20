@@ -9,17 +9,25 @@ import java.util.List;
 import java.util.RandomAccess;
 
 /**
- * An element having a name, attributes and content.
+ * An element in a markup language such as XML or HTML. An element has three components: a name, a set of attributes,
+ * and content. Each attribute consists of a name and a value, which are both strings; the names of the attributes of an
+ * element are always distinct. The content of an element is a sequence of characters and elements.
  * <p/>
- * The content is an ordered list of Elements interspersed with characters. The Elements in the content are the children
- * of this Element. There may be characters in between elements, before the first Element and after the last Element.
- * The list may contain characters even if it contains no Elements. Each Element in the list has a position between 0
- * and n - 1, where n is the number of Elements in the list. The characters in the list are accessed as text chunks,
- * based on their position relative to Elements. For a list containing n Elements, there are exactly n + 1 text chunks,
- * each of which may be empty; each text chunk has a position between 0 and n. The text chunk with position i consists
- * of the characters between the Element with position i - 1 and the Element with position i. Thus the Element at
- * position i is preceded by the text chunk with position i, and followed by the text chunk with position i + 1. An
- * Element with no child Elements has a single text chunk with position 0.
+ * Element identity is object identity: two elements are considered different if they are different objects. An element
+ * can occur in the content of at most one element, which is called its <i>parent</i>. An element keeps a reference to
+ * its parent. The <i>children</i> of an element are the elements occurring in its content. Each child of an element has
+ * an integer index, which uniquely identifies it amongst the children of the element: the first child has index 0, and
+ * the last child has index of one less than the number of children of the element.
+ * <p/>
+ * The characters in the content of an element are called the <i>text</i> of the element. They are not considered to be
+ * children of the element. Identity for characters in the content of an element is value identity. The characters in
+ * the content are accessed as text chunks, based on their position in the content relative to child elements. The
+ * characters in the content of an element having n children are divided into n + 1 text chunks, each of which may be
+ * empty. The text chunk with index 0 is the subsequence of the characters in the content that precedes all elements;
+ * the text chunk with index n is the subsequence of the characters in the content that follows all elements; for
+ * {@literal 0 < i < n}, the text chunk with index i is the subsequence of the characters in the content that follows
+ * the element with index i - 1 and precedes the element with index i. Thus an element with no children has a single
+ * text chunk with index 0.
  *
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
  */
@@ -53,22 +61,25 @@ public class Element implements Cloneable, Appendable {
 
 
     /**
-     * Creates an Element with a given name.
-     * The attributes and content of the element are empty.
-     * @param name the name of the Element
+     * Creates an element with a given name.
+     * The created element has empty attributes and content, and has no parent.
+     * @param name the name of the element; must not be null
+     * @throws NullPointerException if name is null
      */
     public Element(@NotNull String name) {
         this(name, EMPTY_ATTRIBUTES);
     }
 
     /**
-     * Creates an Element with a given name and attributes.
-     * The content of the Element is empty.
-     * @param name the name of the Element to be created
-     * @param attributeSet the attributes of the Element to be created; may be null
+     * Creates an element with a given name and attributes.
+     * The created element has empty content and no parent.
+     *
+     * @param name the name of the element; must not be null
+     * @param attributeSet the attributes of the element to be created; may be null
+     * @throws NullPointerException if name is null
      */
     public Element(@NotNull String name, @NotNull AttributeSet attributeSet) {
-        checkNotNull(name);
+        Util.requireNonNull(name);
         this.name = name;
         this.attributeSet = attributeSet;
         parent = null;
@@ -78,6 +89,12 @@ public class Element implements Cloneable, Appendable {
         textLength = 0;
     }
 
+    /**
+     * Creates and returns a copy of this element.
+     * The copy will have no parent.
+     * The newly created element is independent of this element: they can each be modified without affecting the other.
+     * @return a copy of this element
+     */
     public Element clone() {
         try {
             Element cloned = (Element)super.clone();
@@ -96,8 +113,8 @@ public class Element implements Cloneable, Appendable {
     }
 
     /**
-     * Returns the name of this Element.
-     * @return the name of this Element; never null
+     * Returns the name of this element.
+     * @return the name of this element; never null
      */
     @NotNull
     public String getName() {
@@ -105,17 +122,18 @@ public class Element implements Cloneable, Appendable {
     }
 
     /**
-     * Sets the name of this Element.
-     * @param name the name of this Element; must not be null
+     * Changes the name of this element.
+     * @param name the new name of this element; must not be null
+     * @throws NullPointerException if name is null
      */
     public void setName(@NotNull String name) {
-        checkNotNull(name);
+        Util.requireNonNull(name);
         this.name = name;
     }
 
     /**
-     * Returns the attributes of this Element.
-     * @return an AttributeSet representing the attributes of this Element
+     * Returns the attributes of this element.
+     * @return an AttributeSet representing the attributes of this element; never null
      */
     @NotNull
     public AttributeSet attributes() {
@@ -124,6 +142,25 @@ public class Element implements Cloneable, Appendable {
         return attributeSet;
     }
 
+    /**
+     * Returns true if this element has one or more attributes.
+     * This is a shorthand for {@code !attributes().isEmpty()}.
+     * Use of this method may allow the implementation to avoid creating an {@code AttributeSet} object
+     * for Elements that have no attributes.
+     * @return true if this element has one or more attributes
+     */
+    public boolean hasAttributes() {
+        return !attributeSet.isEmpty();
+    }
+
+    /**
+     * Returns a list of the children of this element. The list is "live": modifying the list changes the children of
+     * this element. Modifying this list does not, however, modify the text of this element. When an element is inserted
+     * in the list at index i, it is inserted in this element's content immediately after the characters comprising text
+     * chunk i.
+     *
+     * @return a list of the children of this element; never null
+     */
     @NotNull
     public List<Element> children() {
         if (childElements == EMPTY_CHILDREN)
@@ -132,39 +169,46 @@ public class Element implements Cloneable, Appendable {
     }
 
     /**
-     * Returns true if this Element has one or more Attributes.
-     * This is a shorthand for <code>!attributes().isEmpty()</code>.
-     * Using <code>hasAttributes()</code> may allow the implementation to avoid creating an AttributeSet object
-     * for Elements that have no attributes.
-     * @return true if this Element has one or more Attributes
-     */
-    public boolean hasAttributes() {
-        return !attributeSet.isEmpty();
-    }
+      * Returns true if this element has one or more children.
+      * @return true if this element has one or more children
+      */
+     public boolean hasChildren() {
+         return !childElements.isEmpty();
+     }
 
-    public boolean hasContent() {
-        return textLength > 0 || !childElements.isEmpty();
+    /**
+     * Returns the text of this element.
+     * @return a String containing the text of this element; never null
+     */
+    @NotNull
+    public String getText() {
+        if (textLength == 0)
+            return "";
+        return new String(text, 0, textLength);
+
     }
 
     /**
-     * Returns true if this Element has one or more child elements.
-     */
-    public boolean hasChildren() {
-        return !childElements.isEmpty();
-    }
-
-    /**
-     * Returns true if this Element's content contains one or more characters.
-     * @return true if this Element's content contains one or more characters
+     * Returns true if this element's content contains one or more characters.
+     * @return true if this element's content contains one or more characters
      */
     public boolean hasText() {
         return textLength > 0;
     }
 
     /**
-     * Returns the parent Element, or null if this Element has no parent.
-     * The parent of an element is set when it is added to the ContentListImpl of another element.
-     * @return the parent Element of this Element, if there is one; null otherwise
+     * Returns true if this element has non-empty content.
+     * An element's content is non-empty if its content includes one or more elements or characters.
+     * @return true if this element has non-empty content
+     */
+    public boolean hasContent() {
+        return textLength > 0 || !childElements.isEmpty();
+    }
+
+    /**
+     * Returns the parent of this element, or null if this element has no parent.
+     * Methods that add to or remove from the children of element automatically modify the
+     * @return the parent element of this element, if there is one; null otherwise
      */
     @Nullable
     public Element getParent() {
@@ -172,8 +216,10 @@ public class Element implements Cloneable, Appendable {
     }
 
     /**
-     * Returns the root Element.
-     * @return the root Element, never null
+     * Returns the root element of this element.
+     * An element that has no parent is its own root element; otherwise the root element of an element
+     * is the root element of its parent.
+     * @return the root element of this element, never null
      */
     @NotNull
     public Element getRoot() {
@@ -184,8 +230,10 @@ public class Element implements Cloneable, Appendable {
     }
 
     /**
-     * Returns the index of this Element in its parent, or -1 if this Element has no parent.
-     * @return the index of this Element in its parent, or -1 if this Element has no parent
+     * Returns the index that this element has in its parent, or -1 if this element has no parent.
+     * The index in its parent is the zero-based index amongst the children of the parent. Thus,
+     * the first child of an element will have index 0.
+     * @return the index that this element has in its parent, or -1 if this element has no parent
      */
     public int getIndexInParent() {
         return indexInParent;
@@ -209,11 +257,6 @@ public class Element implements Cloneable, Appendable {
         child.charIndexInParent = charIndexInParent;
     }
 
-    static void checkNotNull(Object obj) {
-        if (obj == null)
-            throw new NullPointerException();
-    }
-
     private static class ChildElementList extends AbstractList<Element> implements RandomAccess {
         static final int INITIAL_CAPACITY = 8;
         static final Element[] EMPTY = new Element[0];
@@ -224,7 +267,6 @@ public class Element implements Cloneable, Appendable {
         @NotNull
         Element[] elements;
         final Element owner;
-
 
         ChildElementList(Element owner) {
             this.owner = owner;
@@ -277,7 +319,7 @@ public class Element implements Cloneable, Appendable {
          * @throws IllegalArgumentException if element already has a parent
          */
         public boolean add(@NotNull Element element) {
-            checkNotNull(element);
+            Util.requireNonNull(element);
             modCount++;
             ensureCapacity(length + 1);
             owner.attach(element, length, owner.textLength);
@@ -315,7 +357,7 @@ public class Element implements Cloneable, Appendable {
         @NotNull
         public Element set(int index, @NotNull Element element) {
             checkIndex(index);
-            checkNotNull(element);
+            Util.requireNonNull(element);
             Element old = elements[index];
             int charIndex = old.charIndexInParent;
             // Detach the old element first, in case we are replacing it by itself.
@@ -338,7 +380,7 @@ public class Element implements Cloneable, Appendable {
                 add(element);
                 return;
             }
-            checkNotNull(element);
+            Util.requireNonNull(element);
             checkIndex(index);
             int charIndex;
             if (index == length)
@@ -409,7 +451,8 @@ public class Element implements Cloneable, Appendable {
     }
 
     /**
-     * Removes all content.
+     * Removes all content from this element.
+     * After this method returns, {@code hasContent()} will return false.
      */
     public void clearContent() {
         if (textLength > 0)
@@ -420,7 +463,8 @@ public class Element implements Cloneable, Appendable {
     }
 
     /**
-     * Removes all text.
+     * Removes all text content from this element.
+     * After this method returns, {@code hasText()} will return false.
      */
     public void clearText() {
         if (textLength == 0)
@@ -432,20 +476,22 @@ public class Element implements Cloneable, Appendable {
     }
 
     /**
-     * Adds an Element to the list of children.
-     * Equivalent to <tt>children().add(element)</tt.>
-     * @param element
-     * @return this Element
+     * Appends an element to the content of this element.
+     * Equivalent to {@code children().add(child)}.
+     * @param child the element to be added
+     * @return a reference to this element
      */
-    public Element append(Element element) {
-        children().add(element);
+    public Element append(Element child) {
+        children().add(child);
         return this;
     }
 
     /**
-     * Adds characters at the end of the content of this Element.
-     * @param csq a CharSequence with the characters to add; must not be empty
-     * @return this Element
+     * Appends a CharSequence to the content of this element.
+     * If the CharSequence is null, appends the 4 characters {@code null} (this is required by the
+     * {@link Appendable} interface).
+     * @param csq a CharSequence with the characters to add
+     * @return a reference to this element
      */
     public Element append(CharSequence csq) {
         if (csq == null)
@@ -468,8 +514,8 @@ public class Element implements Cloneable, Appendable {
     }
 
     /**
-     * {@inheritDoc}
-     * @return a reference to this Element
+     * @return a reference to this element
+     * @throws IndexOutOfBoundsException {@inheritDoc}
      */
     public Element append(CharSequence csq, int start, int end) {
         int length = end - start;
@@ -483,10 +529,7 @@ public class Element implements Cloneable, Appendable {
     }
 
     /**
-     * Adds a character at the end of the content of this Element.
-     *
-     * @param c the character to be added.
-     * @return this Element
+     * @return a reference to this element
      */
     public Element append(char c) {
         ensureTextCapacity(textLength + 1);
@@ -494,6 +537,7 @@ public class Element implements Cloneable, Appendable {
         text[textLength++] = c;
         return this;
     }
+
 
     public Element append(char[] buf, int offset, int length) {
         if (length < 0 || offset < 0 || offset + length > buf.length)
@@ -519,10 +563,10 @@ public class Element implements Cloneable, Appendable {
     }
 
     /**
-     * Returns true if all the text is whitespace.
-     * This will automatically be true if the text is empty.
+     * Returns true if all the text of this element is whitespace.
+     * This will trivially be true if the text of this element is empty.
      *
-     * @return true if all text is whitespace; false otherwise
+     * @return true if all text content is whitespace; false otherwise
      */
     public boolean isTextAllWhitespace() {
         int i = textLength;
@@ -544,10 +588,11 @@ public class Element implements Cloneable, Appendable {
     }
 
     /**
-     * Returns the text chunk at a specified position.
+     * Returns the text chunk with a specified index.
      *
-     * @param index the position of the text chunk to be returned
-     * @return the text chunk at position index; this may be empty but is never null
+     * @param index the index of the text chunk to be returned
+     * @return a String with the text chunk at the specified index; this may be empty but is never null
+     * @throws IndexOutOfBoundsException if index is less than 0 or greater than the number of children
      */
     @NotNull
     public String getText(int index) {
@@ -558,7 +603,7 @@ public class Element implements Cloneable, Appendable {
 
     /**
      * Returns the text chunk immediately before this element.
-     * @return the text immediately before this element.
+     * @return a String with the text chunk immediately before this element
      */
     public String getTextBefore() {
         if (parent == null)
@@ -568,8 +613,7 @@ public class Element implements Cloneable, Appendable {
 
     /**
      * Returns the text chunk immediately after this element.
-     * This contains all characters after this element up to the next element (if there is one).
-     * @return the text immediately after this element.
+     * @return a String with the text chunk immediately after this element
      */
     public String getTextAfter() {
         if (parent == null)
@@ -578,9 +622,11 @@ public class Element implements Cloneable, Appendable {
     }
 
     /**
-     * Changes the text chunk at a specified position.
-     * @param index the position
-     * @param str the new text chunk for the position; this may be empty, but must not be null
+     * Changes the text chunk with a specified index.
+     * @param index the index of the text chunk to be changed
+     * @param str the new text chunk; this may be empty, but must not be null
+     * @throws IndexOutOfBoundsException if index is less than 0 or greater than the number of children
+     * @throws NullPointerException if str is null
      */
     public void setText(int index, @NotNull String str) {
         int startIndex = getTextChunkStartIndex(index);
@@ -616,22 +662,22 @@ public class Element implements Cloneable, Appendable {
         return index == childElements.length ? textLength : childElements.elements[index].charIndexInParent;
     }
 
-    /* Locations */
+    // Locations
 
     /**
-     * Returns the Location of the start-tag or empty-element tag for this Element.
+     * Returns the Location of the start-tag or empty-element tag for this element.
      *
-     * @return the Location of the start-tag or empty-element tag for this Element; null if no Location is available
+     * @return the Location of the start-tag or empty-element tag for this element; null if no Location is available
      */
     public Location getStartTagLocation() {
         return null;
     }
 
     /**
-     * Returns the Location of the end-tag for this Element.
-     * If this Element used an empty-element tag, returns the location of the "/>" that terminated the tag.
+     * Returns the Location of the end-tag for this element.
+     * If this element used an empty-element tag, returns the location of the "/>" that terminated the tag.
      *
-     * @return the Location of the end-tag of this Element; null if no Location is available
+     * @return the Location of the end-tag of this element; null if no Location is available
      */
     public Location getEndTagLocation() {
         return null;
@@ -641,7 +687,7 @@ public class Element implements Cloneable, Appendable {
      * Returns the location of a range of characters in the content.
      * The range is allowed to be empty.
      *
-     * @param chunkIndex the position of the text chunk containing the characters
+     * @param chunkIndex the index of the text chunk containing the characters
      * @param beginIndex the index within the text chunk of the first character of the range
      * @param endIndex the index within the text chunk following the last character of the range
      * @return the Location of the specified range of characters; null if no Location is available
@@ -662,7 +708,7 @@ public class Element implements Cloneable, Appendable {
     }
 
     /**
-     * Called when a range of characters in the content are about to change.
+     * Called when a range of characters in the content is about to change.
      *
      * @param start the index of the first character that is to be changed
      * @param end the index after the last character that is to be changed

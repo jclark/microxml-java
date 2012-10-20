@@ -14,3 +14,6 @@ same tree should have the same syntax.
 Property like innerHTML.
 
 Keep a cache of an Element's text as a String. For a text chunk return a substring of the cached string.
+
+AttributeSet.add does not comply with Collections contract: add can only return false if Element is a member
+
