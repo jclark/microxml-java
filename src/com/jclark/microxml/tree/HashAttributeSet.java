@@ -250,6 +250,7 @@ class HashAttributeSet extends AbstractSet<Attribute> implements AttributeSet, C
         return new Iter();
     }
 
+    @SuppressWarnings("unchecked")
     public <T> T[] toArray(T[] a) {
         if (size > a.length)
             a = (T[])java.lang.reflect.Array.newInstance(a.getClass().getComponentType(), size);
@@ -263,5 +264,26 @@ class HashAttributeSet extends AbstractSet<Attribute> implements AttributeSet, C
         while (j < a.length)
             a[j++] = null;
         return a;
+    }
+
+    void selfCheck() {
+        if (atts == null) {
+            assert size == 0;
+            assert used == 0;
+        }
+        else {
+            int size = 0;
+            int used = 0;
+            for (Attribute att : atts) {
+                if (att != null) {
+                    used++;
+                    if (att != REMOVED)
+                        size++;
+                }
+            }
+            assert used == this.used;
+            assert size == this.size;
+            assert usedLimit < atts.length;
+        }
     }
 }

@@ -12,6 +12,7 @@ public class BuildTest  {
     static public void main(String[] args) throws IOException {
         try {
             Element element = XML.parse(new File(args[0]), new XML.ParseOption[] { XML.ParseOption.STORE_LOCATIONS });
+            element.selfCheck();
             MicroXML.serialize(element, new File(args[1]));
         }
         catch (ParseException e) {

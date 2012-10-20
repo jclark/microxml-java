@@ -182,6 +182,24 @@ class LocationBuildHandler extends BuildHandler {
                     charLocations[i] = prevLocationIndex = charIndex + inc;
             }
         }
+
+        @Override
+        void selfCheck() {
+            super.selfCheck();
+            assert numCharLocations <= charLocations.length;
+            assert numCharLocations % 4 == 0;
+            assert urlList != null;
+            for (int i = 0; i < numCharLocations; i += 4) {
+                assert charLocations[i] >= 0;
+                assert charLocations[i] <= getTextLength();
+                if (i > 0)
+                    assert charLocations[i - 4] <= charLocations[i];
+                assert charLocations[i + 1] >= -1;
+                assert charLocations[i + 1] < urlList.urls.size();
+                assert charLocations[i + 2] >= -1;
+                assert charLocations[i + 3] >= - 1;
+            }
+        }
     }
 
     @Override

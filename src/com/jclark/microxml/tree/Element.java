@@ -395,6 +395,17 @@ public class Element implements Cloneable, Appendable {
             for (; startIndex < endIndex; startIndex++)
                 elements[startIndex].charIndexInParent += inc;
         }
+
+        void selfCheck() {
+            assert length >= 0;
+            assert length <= elements.length;
+            for (int i = 0; i < length; i++) {
+                assert elements[i].parent == owner;
+                elements[i].selfCheck();
+                if (i > 0)
+                    assert elements[i - 1].charIndexInParent <= elements[i].charIndexInParent;
+            }
+        }
     }
 
     /**
@@ -663,5 +674,22 @@ public class Element implements Cloneable, Appendable {
 
     protected final int getTextLength() {
         return textLength;
+    }
+
+    void selfCheck() {
+        if (childElements != EMPTY_CHILDREN)
+            assert childElements.owner == this;
+        assert childElements != null;
+        assert attributeSet != null;
+        if (attributeSet instanceof HashAttributeSet)
+            ((HashAttributeSet)attributeSet).selfCheck();
+        assert name != null;
+        if (parent != null) {
+            assert indexInParent >= 0;
+            assert parent.childElements.elements[indexInParent] == this;
+            assert charIndexInParent >= 0;
+            assert charIndexInParent <= parent.textLength;
+        }
+        childElements.selfCheck();
     }
 }

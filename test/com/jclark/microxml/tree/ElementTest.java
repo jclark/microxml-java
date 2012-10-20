@@ -32,6 +32,7 @@ public class ElementTest {
         e.append("Hello");
         assertFalse(e.hasChildren());
         assertEquals(e.getText(0), "Hello");
+        e.selfCheck();
         Element child = new Element("y");
         e.children().add(child);
         assertEquals(e.children().size(), 1);
@@ -45,6 +46,7 @@ public class ElementTest {
         e.clearText();
         assertEquals(e.getText(0), "");
         assertEquals(e.getText(1), "");
+        e.selfCheck();
     }
 
     @Test
@@ -58,6 +60,7 @@ public class ElementTest {
         for (int i = 0; i < N; i++)
             assertEquals(children.get(i).getName(),
                          "x" + Integer.toString(i));
+        root.selfCheck();
     }
 
     @Test
@@ -77,5 +80,6 @@ public class ElementTest {
             assertEquals(children.get(i).getName(), "x" + Integer.toString(i + 1));
         for (int i = 0; i < 5; i++)
             assertEquals(children.get(i).getName(), "x" + Integer.toString(i));
+        root.selfCheck();
     }
 }
