@@ -482,6 +482,17 @@ public class Element implements Cloneable, Appendable {
     }
 
     /**
+     * Adds an attribute to the attributes of this element.
+     * @param attribute the attribute to be added
+     * @return a reference to this element
+     * @throws DuplicateAttributeException if this element already has an attribute with the same name
+     */
+    public Element add(Attribute attribute) {
+        if (!attributes().add(attribute))
+            throw new DuplicateAttributeException(attribute.getName());
+        return this;
+    }
+    /**
      * Appends an element to the content of this element.
      * Equivalent to {@code children().add(child)}.
      * @param child the element to be added

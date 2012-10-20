@@ -89,8 +89,12 @@ class HashAttributeSet extends AbstractSet<Attribute> implements AttributeSet, C
             rehash();
         int i = name.hashCode() & (atts.length - 1);
         while (atts[i] != null) {
-            if (atts[i] != REMOVED && atts[i].getName().equals(name))
-                return false;
+            if (atts[i] != REMOVED && atts[i].getName().equals(name)) {
+                // This is a bit weird, but is required by Collection.add.
+                if (atts[i].getValue().equals(att.getValue()))
+                    return false;
+                throw new DuplicateAttributeException(name);
+            }
             if (i == 0)
                 i = atts.length;
             --i;

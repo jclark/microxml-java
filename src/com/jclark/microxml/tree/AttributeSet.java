@@ -3,7 +3,8 @@ package com.jclark.microxml.tree;
 import java.util.Set;
 
 /**
- * A set of Attributes.
+ * A set of Attributes. An AttributeSet preserves the invariant that it never contains
+ * two Attributes with the same name.
  *
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
  */
@@ -36,9 +37,15 @@ public interface AttributeSet extends Set<Attribute> {
     AttributeSet clone();
 
     /**
-     * Adds an Attribute, provided there is not already an Attribute with the same name.
-     * @param attribute the attribute to be added; must not be null
-     * @return true if the attribute was added
+     * Adds an Attribute to this AttributeSet. If this AttributeSet already contains an Attribute with the same name and
+     * same value, then the Attribute is not added; if the AttributeSet already contains an Attribute with the same name
+     * but a different value, then a DuplicateAttributeException is thrown.
+     *
+     * @param attribute the Attribute to be added; must not be null
+     * @return true if the Attribute was added; false otherwise
+     * @throws NullPointerException        if attribute is null
+     * @throws DuplicateAttributeException if this Attribute contains an Attribute with the same name and a different
+     *                                     value
      */
     boolean add(Attribute attribute);
 }

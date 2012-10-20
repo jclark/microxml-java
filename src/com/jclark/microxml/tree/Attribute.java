@@ -5,6 +5,8 @@ import org.jetbrains.annotations.NotNull;
 /**
  * An attribute, representing a name-value pair.
  *
+ * Two attributes are equal if their names and values are equal.
+ *
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
  */
 public class Attribute implements Cloneable {
@@ -39,7 +41,7 @@ public class Attribute implements Cloneable {
     public boolean equals(Object obj) {
         if (this == obj)
             return true;
-        if (obj == null || getClass() != obj.getClass())
+        if (obj == null || !(obj instanceof Attribute))
             return false;
         Attribute att = (Attribute)obj;
         return name.equals(att.name) && value.equals(att.value);
