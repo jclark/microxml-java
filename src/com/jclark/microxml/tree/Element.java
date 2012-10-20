@@ -252,6 +252,13 @@ public class Element implements Cloneable, Appendable {
     private void attach(Element child, int indexInParent, int charIndexInParent) {
         if (child.parent != null)
             throw new IllegalArgumentException("Element already has a parent");
+        // hasChildren() call avoids potentially expensive call to getRoot() in common case
+        if (child.hasChildren() && getRoot() == child)
+            throw new IllegalArgumentException("an Element cannot be its own ancestor");
+        attachNoCheck(child, indexInParent, charIndexInParent);
+    }
+
+    private void attachNoCheck(Element child, int indexInParent, int charIndexInParent) {
         child.parent = this;
         child.indexInParent = indexInParent;
         child.charIndexInParent = charIndexInParent;
@@ -282,7 +289,7 @@ public class Element implements Cloneable, Appendable {
                 elements = new Element[list.length];
                 for (int i = 0; i < list.length; i++) {
                     elements[i] = list.elements[i].clone();
-                    owner.attach(elements[i], i, list.elements[i].charIndexInParent);
+                    owner.attachNoCheck(elements[i], i, list.elements[i].charIndexInParent);
                 }
             }
             length = list.length;
@@ -360,9 +367,8 @@ public class Element implements Cloneable, Appendable {
             Util.requireNonNull(element);
             Element old = elements[index];
             int charIndex = old.charIndexInParent;
-            // Detach the old element first, in case we are replacing it by itself.
-            old.detach();
             owner.attach(element, index, charIndex);
+            old.detach();
             elements[index] = element;
             return old;
         }
@@ -389,12 +395,12 @@ public class Element implements Cloneable, Appendable {
                 charIndex = elements[index].charIndexInParent;
             modCount++;
             ensureCapacity(length + 1);
+            owner.attach(element, index, charIndex);
             for (int i = length; i > index; --i) {
                 Element e = elements[i - 1];
                 elements[i] = e;
                 e.indexInParent = i;
             }
-            owner.attach(element, index, charIndex);
             elements[index] = element;
         }
 

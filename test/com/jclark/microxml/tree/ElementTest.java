@@ -82,4 +82,10 @@ public class ElementTest {
             assertEquals(children.get(i).getName(), "x" + Integer.toString(i));
         root.selfCheck();
     }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testCycle() throws Exception {
+        Element root = new Element("root").append(new Element("child"));
+        root.children().get(0).append(root);
+    }
 }
