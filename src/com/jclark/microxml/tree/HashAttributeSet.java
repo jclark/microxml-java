@@ -30,7 +30,10 @@ class HashAttributeSet extends AbstractSet<Attribute> implements AttributeSet, C
     private static final int INITIAL_CAPACITY = 8; // must be power of 2
     private static final float LOAD_FACTOR = 0.6f;
 
-    HashAttributeSet() {
+    /**
+     * Creates an empty AttributeSet.
+     */
+    public HashAttributeSet() {
         atts = null;
         size = 0;
         used = 0;
