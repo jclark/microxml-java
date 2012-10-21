@@ -77,9 +77,12 @@ public class Attribute implements Cloneable {
 
     /**
      * Return the Location of a range of characters in the value of this Attribute.
+     *
      * @param beginIndex the index of the first character of the range
-     * @param endIndex the index after the last character of the range
+     * @param endIndex   the index after the last character of the range
      * @return the Location for the specified range; null if no Location is available
+     * @throws IndexOutOfBoundsException if {@code beginIndex < 0} or {@code beginIndex > endIndex} or {@code endIndex >
+     *                                   getValue().length}
      */
     Location getValueLocation(int beginIndex, int endIndex) {
         if (beginIndex < 0 || beginIndex > endIndex || endIndex > value.length())
