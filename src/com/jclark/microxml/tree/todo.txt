@@ -1,4 +1,8 @@
-Method on Element to compare document order of two elements.
+MicroXML parser that handles Locations.
+
+Method on Element to compare document order of two elements. Maybe implement Comparable and return value based
+on document order.  This will require an ordering a root nodes. Add a RootInfo field to Element: lazily create
+this for root Elements and include in it a sequence number. (Could also use RootInfo for a tree modCount.)
 
 toString methods
 
@@ -16,4 +20,6 @@ Property like innerHTML.
 Keep a cache of an Element's text as a String. For a text chunk return a substring of the cached string.
 
 Do querying like Stream in Java 8.
+
+XML Builder should have PIHandler property to be able to process PIs before the Document Element.
 
