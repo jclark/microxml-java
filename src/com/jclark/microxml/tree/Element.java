@@ -28,6 +28,9 @@ import java.util.RandomAccess;
  * {@literal 0 < i < n}, the text chunk with index i is the subsequence of the characters in the content that follows
  * the element with index i - 1 and precedes the element with index i. Thus an element with no children has a single
  * text chunk with index 0.
+ * <p/>
+ * Two threads can safely access distinct elements at the same time provided that those elements are in different
+ * trees i.e. the elements returned by {@link #getRoot()} are distinct.
  *
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
  */
@@ -133,6 +136,7 @@ public class Element implements Cloneable, Appendable {
 
     /**
      * Returns the attributes of this element.
+     * The identity of the AttributeSet returned is fixed for a given element.
      * @return an AttributeSet representing the attributes of this element; never null
      */
     @NotNull
@@ -157,7 +161,7 @@ public class Element implements Cloneable, Appendable {
      * Returns a list of the children of this element. The list is "live": modifying the list changes the children of
      * this element. Modifying this list does not, however, modify the text of this element. When an element is inserted
      * in the list at index i, it is inserted in this element's content immediately after the characters comprising text
-     * chunk i.
+     * chunk i. The identity of the List returned is fixed for a given element.
      *
      * @return a list of the children of this element; never null
      */
@@ -663,7 +667,7 @@ public class Element implements Cloneable, Appendable {
         }
     }
 
-    private int getTextChunkStartIndex(int index) {
+    protected int getTextChunkStartIndex(int index) {
          if (index <= 0) {
              if (index < 0)
                  throw new IndexOutOfBoundsException();
@@ -675,7 +679,7 @@ public class Element implements Cloneable, Appendable {
     }
 
     // This assumes that index is in bounds
-    private int getTextChunkEndIndex(int index) {
+    protected int getTextChunkEndIndex(int index) {
         return index == childElements.length ? textLength : childElements.elements[index].charIndexInParent;
     }
 
