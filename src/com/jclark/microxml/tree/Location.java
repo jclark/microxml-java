@@ -25,32 +25,24 @@ public interface Location {
      * The index is 0-based and measured in Java chars, which are equivalent to 16-bit UTF-16 code-units.
      * @return the index in chars of the start of the range; -1 if not available
      */
-    long getIndex();
+    long getStartIndex();
 
     /**
-     * Returns the length of the range.
-     * The length is measured in Java chars, which are equivalent to 16-it code-units.
-     * If the length is greater than Integer.MAX_VALUE, then returns Integer.MAX_VALUE.
-     * The length may be zero.
-     * @return the length of the range; -1 if not available
+     * Return the index of the end of the range.
+     * The index is 0-based and measured in Java chars, which are equivalent to 16-bit UTF-16 code-units.
+     * @return the index in chars of the start of the range; -1 if not available
      */
-    int getLength();
+    long getEndIndex();
 
     /**
-     * Returns the line number of the start of the range.
-     * The first line-number is 1.
-     * If the line number is greater than Integer.MAX_VALUE, then returns Integer.MAX_VALUE.
-     * Lines are considered to be delimited by \n, \r, or \r\n only.
-     * @return the line number of the start of the range; -1 if not available
+     * Return the line and column number of the start of the range.
+     * @return a LinePosition giving the line and column number of the start of the range; never null
      */
-    int getLineNumber();
+    LinePosition getStartLinePosition();
 
     /**
-     * Returns the column number of the start of the range.
-     * The column number of a character is one plus the number of Java chars (16-bit UTF-16 code units)
-     * preceding it on the line.
-     * This will not always correspond to the column number in a text editor.
-     * @return the column number of the start of the range; -1 if not available
+     * Returns the line and column number of the end of the range.
+     * @return a LinePosition giving the line and column number of the start of the range; never null
      */
-    int getColumnNumber();
+    LinePosition getEndLinePosition();
 }

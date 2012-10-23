@@ -11,19 +11,19 @@ public class AbstractLocation implements Location {
         return null;
     }
 
-    public long getIndex() {
+    public long getStartIndex() {
         return -1L;
     }
 
-    public int getLength() {
-        return -1;
+    public long getEndIndex() {
+        return -1L;
     }
 
-    public int getLineNumber() {
-        return -1;
+    public LinePosition getStartLinePosition() {
+        return LinePosition.VOID;
     }
 
-    public int getColumnNumber() {
-        return -1;
+    public LinePosition getEndLinePosition() {
+        return LinePosition.VOID;
     }
 }

@@ -30,11 +30,12 @@ public class BuildTest  {
             err.print(url);
             err.print(':');
         }
-        int lineNumber = loc.getLineNumber();
+        LinePosition lp = loc.getStartLinePosition();
+        int lineNumber = lp.getLineNumber();
         if (lineNumber >= 1) {
             err.print(lineNumber);
             err.print(':');
-            int columnNumber = loc.getColumnNumber();
+            int columnNumber = lp.getColumnNumber();
             if (columnNumber >= 0) {
                 System.err.print(columnNumber);
                 System.err.print(':');

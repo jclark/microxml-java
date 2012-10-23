@@ -59,7 +59,7 @@ public class AttributeTest {
     @Test
     public void testGetLocation() throws Exception {
         Attribute att = create();
-        assertNull(att.getLocation());
+        assertNull(att.getNameLocation());
         assertNull(att.getValueLocation(0, 3));
         assertNull(att.getValueLocation(0, 0));
         assertNull(att.getValueLocation(3, 3));

@@ -66,12 +66,11 @@ public class Attribute implements Cloneable {
     }
 
     /**
-     * Returns the Location of this Attribute.
-     * The Location's range should cover the entire attribute starting from the first character of the
-     * name up to and including the closing quote of the value.
+     * Returns the Location of the name of this Attribute.
+     *
      * @return the Location of this Attribute; null if not available
      */
-    Location getLocation() {
+    Location getNameLocation() {
         return null;
     }
 

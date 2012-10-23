@@ -97,13 +97,13 @@ public class XML {
              }
 
              @Override
-             public int getLineNumber() {
-                 return e.getLineNumber();
+             public LinePosition getStartLinePosition() {
+                 return new LinePosition(e.getLineNumber(), e.getColumnNumber());
              }
 
              @Override
-             public int getColumnNumber() {
-                 return e.getColumnNumber();
+             public LinePosition getEndLinePosition() {
+                 return getStartLinePosition();
              }
          };
      }
