@@ -279,7 +279,7 @@ public class Tokenizer<TExc extends Throwable> {
                         }
                         if (isSurrogate2(buf[nextIndex + 1])) {
                             if (isForbiddenSurrogatePair(buf[nextIndex], buf[nextIndex + 1])) {
-                                error(ParseError.INVALID_CODE_POINT);  // TODO: right location
+                                error(nextIndex, nextIndex + 2, ParseError.INVALID_CODE_POINT);
                                 buf[nextIndex] = REPLACEMENT_CHAR;
                                 buf[nextIndex + 1] = REPLACEMENT_CHAR;
                             }
@@ -596,7 +596,7 @@ public class Tokenizer<TExc extends Throwable> {
             else
                 parseText(quote);
         }
-        error(nextIndex, nextIndex, ParseError.MISSING_QUOTE);
+        error(ParseError.MISSING_QUOTE);
         return false;
     }
 
@@ -779,18 +779,15 @@ public class Tokenizer<TExc extends Throwable> {
     private static boolean isSurrogate2(char ch) {
         return Character.isLowSurrogate(ch);
     }
+
     private static boolean isForbiddenSurrogatePair(char ch1, char ch2) {
         return (ch2 & 0x3FE) == 0x3FE && (ch1 & 0x3F) == 0x3F;
     }
 
-    void fatal(ParseError err) throws TExc {
-        int nextPosition = bufStartPosition + nextIndex;
-        handler.fatal(nextPosition > 0 ? nextPosition - 1 : nextPosition, nextPosition, err.toString());
-    }
-
     void error(ParseError err) throws TExc {
-        int nextPosition = bufStartPosition + nextIndex;
-        handler.error(nextPosition > 0 ? nextPosition - 1 : nextPosition, nextPosition, err.toString());
+        handler.error(bufStartPosition + nextIndex,
+                      bufStartPosition + (nextIndex == limit ? nextIndex : nextIndex + 1),
+                      err.toString());
     }
 
     void error(int startIndex, int endIndex, ParseError err) throws TExc {
