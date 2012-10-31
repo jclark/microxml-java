@@ -5,7 +5,73 @@ import java.util.Arrays;
 /**
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
  */
-public class Parser {
+class TreeBuilder implements TokenHandler<ParseException> {
+
+    static private final char BYTE_ORDER_MARK = 0xFEFF;
+
+    private final LineMap lineMap;
+    private LocatedElement root;
+    private LocatedElement currentElement;
+    private LocatedAttribute currentAttribute;
+    private int expectedTextPosition = 0;
+
+    TreeBuilder(LineMap lineMap) {
+        this.lineMap = lineMap;
+    }
+
+    public void startTagOpen(int position, String name) throws ParseException {
+        LocatedElement elem = new LocatedElement(name, position, lineMap);
+        if (currentElement == null)
+            root = currentElement;
+        else
+            currentElement.append(elem);
+    }
+
+    public void attributeOpen(int namePosition, int valuePosition, String name) throws ParseException {
+        currentAttribute = new LocatedAttribute(name, namePosition, valuePosition, lineMap);
+    }
+
+    public void attributeClose() throws ParseException {
+        currentElement.add(currentAttribute);
+        currentAttribute = null;
+    }
+
+    public void startTagClose(int position) throws ParseException {
+        // skip past ">"
+        position++;
+        currentElement.setStartTagCloseOffset(position);
+        expectedTextPosition = position;
+    }
+
+    public void emptyElementTagClose(int position) throws ParseException {
+        // skip past "/>"
+        position += 2;
+        currentElement.setStartTagCloseOffset(position);
+        currentElement = (LocatedElement)(currentElement.getParent());
+        expectedTextPosition = position;
+    }
+
+    public void endTag(int startPosition, int endPosition, String name) throws ParseException {
+        currentElement.setEndTagOffsets(startPosition, endPosition);
+    }
+
+    public void literalChars(int position, char[] chars, int offset, int count) throws ParseException {
+    }
+
+    public void charRef(int position, int refLength, char[] chars) throws ParseException {
+    }
+
+    public void end() throws ParseException {
+
+    }
+
+    public void error(int startPosition, int endPosition, String message) throws ParseException {
+        fatal(startPosition, endPosition, message);
+    }
+
+    public void fatal(int startPosition, int endPosition, String message) throws ParseException {
+        throw new ParseException(message, lineMap.getLocation(startPosition, endPosition));
+    }
 
     /**
      * Provides functions and constants for dealing with text maps.
@@ -162,12 +228,9 @@ public class Parser {
             this.startTagCloseOffset = startTagCloseOffset;
         }
 
-        void setEndTagOpenOffset(int endTagOpenOffset) {
-            this.endTagOpenOffset = endTagOpenOffset;
-        }
-
-        void setEndTagCloseOffset(int endTagCloseOffset) {
-            this.endTagCloseOffset = endTagCloseOffset;
+        final void setEndTagOffsets(int openOffset, int closeOffset) {
+            this.endTagOpenOffset = openOffset;
+            this.endTagCloseOffset = closeOffset;
         }
 
         void addCharRef(char c, int length) {
@@ -226,22 +289,17 @@ public class Parser {
     }
 
     static class LocatedAttribute extends Attribute {
-        LineMap lineMap;
+        final LineMap lineMap;
         int[] textMap;
-        int textMapLength;
-        int nameStartOffset;
-        int valueStartOffset;
+        final int nameStartOffset;
+        final int valueStartOffset;
 
-        LocatedAttribute(String name, int nameStartOffset, LineMap lineMap) {
+        LocatedAttribute(String name, int nameStartOffset, int valueStartOffset, LineMap lineMap) {
             super(name, "");
+            this.lineMap = lineMap;
             this.nameStartOffset = nameStartOffset;
-            this.valueStartOffset = -1;
-            textMap = TextMap.DIRECT;
-            textMapLength = 0;
-        }
-
-        void setValueStartOffset(int valueStartOffset) {
             this.valueStartOffset = valueStartOffset;
+            textMap = TextMap.DIRECT;
         }
 
         @Override
@@ -253,7 +311,7 @@ public class Parser {
         Location getValueLocation(int beginIndex, int endIndex) {
             if (beginIndex < 0 || endIndex < beginIndex || endIndex > getValue().length())
                 throw new IndexOutOfBoundsException();
-            return TextMap.findLocation(beginIndex, endIndex, 0, valueStartOffset, textMap, 0, textMapLength, lineMap);
+            return TextMap.findLocation(beginIndex, endIndex, 0, valueStartOffset, textMap, 0, textMap.length, lineMap);
         }
     }
 
