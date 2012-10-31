@@ -11,7 +11,7 @@ public class LocatedElementTest {
     @Test
     public void testOffsets() throws Exception {
         LineMap lineMap = new LineMap("foo.xml");
-        Parser.LocatedElement elem = new Parser.LocatedElement("foo", 0, lineMap);
+        TreeBuilder.LocatedElement elem = new TreeBuilder.LocatedElement("foo", 0, lineMap);
         elem.setStartTagCloseOffset(5);
         elem.noteComment(10);
         // assertEquals(elem.getTextLocation(0, 0, 0).getStartIndex(), 5);
