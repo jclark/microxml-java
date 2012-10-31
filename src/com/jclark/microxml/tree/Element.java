@@ -559,6 +559,11 @@ public class Element implements Cloneable, Appendable {
         return this;
     }
 
+    protected final void fastAdd(char ch) {
+        if (text.length == textLength)
+            ensureTextCapacity(textLength + 1);
+        text[textLength++] = ch;
+    }
 
     public Element append(char[] buf, int offset, int length) {
         if (length < 0 || offset < 0 || offset + length > buf.length)
