@@ -7,6 +7,7 @@ import java.util.Arrays;
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
  */
 // TODO
+// Be able to parse from a Reader
 // Unquoted attribute values
 // Boolean attributes
 // Extended characters in names
