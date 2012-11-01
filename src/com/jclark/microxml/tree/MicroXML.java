@@ -41,4 +41,17 @@ public class MicroXML {
     static private Writer fileWriter(File file) throws IOException {
         return new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), Charset.forName("UTF-8")));
     }
+
+    static public Element parse(String document) throws ParseException {
+        LineMap lineMap = new LineMap(null);
+        TreeBuilder treeBuilder = new TreeBuilder(lineMap);
+        Tokenizer<ParseException> tokenizer = new Tokenizer<ParseException>(lineMap, document, treeBuilder);
+        try {
+            tokenizer.parse();
+        }
+        catch (IOException e) {
+            throw new AssertionError();
+        }
+        return treeBuilder.getRoot();
+    }
 }
