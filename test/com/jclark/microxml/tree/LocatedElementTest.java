@@ -13,12 +13,12 @@ public class LocatedElementTest {
         LineMap lineMap = new LineMap("foo.xml");
         TreeBuilder.LocatedElement elem = new TreeBuilder.LocatedElement("foo", 0, lineMap);
         elem.setStartTagCloseOffset(5);
-        elem.noteComment(10);
+        elem.noteMarkup(10);
         // assertEquals(elem.getTextLocation(0, 0, 0).getStartIndex(), 5);
         elem.append("Hello!");
 
         elem.append('\n');
-        elem.noteIgnoredLf();
+        elem.hadCrLf();
         Location loc = elem.getTextLocation(0, 0, 6);
         assertEquals(loc.getStartIndex(), 5 + 10);
         assertEquals(loc.getEndIndex(), 5 + 10 + 6);

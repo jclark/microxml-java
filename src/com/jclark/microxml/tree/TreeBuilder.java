@@ -13,27 +13,40 @@ class TreeBuilder implements TokenHandler<ParseException> {
     private LocatedElement root;
     private LocatedElement currentElement;
     private LocatedAttribute currentAttribute;
+    // used as a buffer to build up attribute values
+    private LocatedElement attributeValueElement;
+    private LocatedElement textElement;
     private int expectedTextPosition = 0;
 
     TreeBuilder(LineMap lineMap) {
         this.lineMap = lineMap;
+        root = new LocatedElement("#doc", 0, lineMap);
+        root.setStartTagCloseOffset(0);
+        currentElement = root;
+        attributeValueElement = new LocatedElement("#att", 0, lineMap);
+    }
+
+    public Element getRoot() {
+        return root;
     }
 
     public void startTagOpen(int position, String name) throws ParseException {
         LocatedElement elem = new LocatedElement(name, position, lineMap);
-        if (currentElement == null)
-            root = currentElement;
-        else
-            currentElement.append(elem);
+        currentElement.append(elem);
+        textElement = currentElement = elem;
     }
 
     public void attributeOpen(int namePosition, int valuePosition, String name) throws ParseException {
         currentAttribute = new LocatedAttribute(name, namePosition, valuePosition, lineMap);
+        expectedTextPosition = valuePosition;
+        textElement = attributeValueElement;
     }
 
     public void attributeClose() throws ParseException {
+        currentAttribute.setValue(attributeValueElement);
         currentElement.add(currentAttribute);
         currentAttribute = null;
+        textElement = currentElement;
     }
 
     public void startTagClose(int position) throws ParseException {
@@ -47,26 +60,58 @@ class TreeBuilder implements TokenHandler<ParseException> {
         // skip past "/>"
         position += 2;
         currentElement.setStartTagCloseOffset(position);
-        currentElement = (LocatedElement)(currentElement.getParent());
+        textElement = currentElement = (LocatedElement)(currentElement.getParent());
         expectedTextPosition = position;
     }
 
     public void endTag(int startPosition, int endPosition, String name) throws ParseException {
         currentElement.setEndTagOffsets(startPosition, endPosition);
+        expectedTextPosition = endPosition;
+        // TODO error checking
+        textElement = currentElement = (LocatedElement)(currentElement.getParent());
+    }
+
+    static boolean isWhitespace(char c) {
+        switch (c) {
+        case '\r':
+        case '\n':
+        case '\t':
+        case ' ':
+        case '\f':
+            return true;
+        }
+        return false;
     }
 
     public void literalChars(int position, char[] chars, int offset, int count) throws ParseException {
+        setTextPosition(position);
+        textElement.fastAdd(chars, offset, count);
+        expectedTextPosition = position + count;
     }
 
     public void crLf(int position) throws ParseException {
-
+        setTextPosition(position);
+        textElement.fastAdd('\n');
+        textElement.hadCrLf();
+        expectedTextPosition = position + 2;
     }
 
     public void charRef(int position, int refLength, char[] chars) throws ParseException {
+        setTextPosition(position);
+        if (chars.length == 1)
+            textElement.addCharRef(chars[0], refLength);
+        else
+            textElement.addCharRef(chars[0], chars[1], refLength);
+        expectedTextPosition = position + refLength;
     }
 
     public void end() throws ParseException {
+        // TODO
+    }
 
+    private void setTextPosition(int position) {
+        if (expectedTextPosition != position)
+            textElement.noteMarkup(position - expectedTextPosition);
     }
 
     public void error(int startPosition, int endPosition, String message) throws ParseException {
@@ -149,7 +194,7 @@ class TreeBuilder implements TokenHandler<ParseException> {
                     extra = 1;
                 endOffset += extra;
                 if (i < baseIndex + startIndex
-                        || (i == baseIndex + startIndex
+                    || (i == baseIndex + startIndex
                         && n < 0
                         && (n & MARKUP_FLAG) != 0))
                     startOffset += extra;
@@ -194,7 +239,8 @@ class TreeBuilder implements TokenHandler<ParseException> {
         }
     }
 
-    static final class LocatedElement extends Element {
+
+    static final class LocatedElement extends Element  {
         final LineMap lineMap;
         // index into source of first character of start-tag/empty-element-tag
         int startTagOpenOffset;
@@ -232,37 +278,38 @@ class TreeBuilder implements TokenHandler<ParseException> {
             this.startTagCloseOffset = startTagCloseOffset;
         }
 
-        final void setEndTagOffsets(int openOffset, int closeOffset) {
+        void setEndTagOffsets(int openOffset, int closeOffset) {
             this.endTagOpenOffset = openOffset;
             this.endTagCloseOffset = closeOffset;
         }
 
         void addCharRef(char c, int length) {
             // TODO handle excessive length by adding a markup entry
-            appendTextSourceMap(getTextLength());
-            appendTextSourceMap(length | TextMap.CONTINUE_FLAG);
-            append(c);
+            addTextMapEntry(getTextLength());
+            addTextMapEntry(length | TextMap.CONTINUE_FLAG);
+            fastAdd(c);
         }
 
-        void addCharRef2(char c1, char c2, int length) {
+        void addCharRef(char c1, char c2, int length) {
             // TODO handle excessive length by adding a markup entry
-            appendTextSourceMap(getTextLength());
-            appendTextSourceMap(length|TextMap.CONTINUE_FLAG|TextMap.SURROGATE_PAIR_FLAG);
-            append(c1).append(c2);
+            addTextMapEntry(getTextLength());
+            addTextMapEntry(length|TextMap.CONTINUE_FLAG|TextMap.SURROGATE_PAIR_FLAG);
+            fastAdd(c1);
+            fastAdd(c2);
         }
 
-        void noteComment(int length) {
+        void noteMarkup(int length) {
             assert length > 0;
             // TODO if length is > MARKUP_FLAG, split into two
-            appendTextSourceMap(getTextLength());
-            appendTextSourceMap(-length);
+            addTextMapEntry(getTextLength());
+            addTextMapEntry(-length);
         }
 
-        void noteIgnoredLf() {
-            appendTextSourceMap(getTextLength() - 1);
+        void hadCrLf() {
+            addTextMapEntry(getTextLength() - 1);
         }
 
-        void appendTextSourceMap(int n) {
+        void addTextMapEntry(int n) {
             if (textSourceMapLength >= textSourceMap.length) {
                 if (textSourceMap.length == 0)
                     textSourceMap = new int[2];
@@ -306,6 +353,17 @@ class TreeBuilder implements TokenHandler<ParseException> {
             textMap = TextMap.DIRECT;
         }
 
+        void setValue(LocatedElement element) {
+            if (element.textSourceMapLength == 0)
+                textMap = TextMap.DIRECT;
+            else {
+                textMap = Arrays.copyOf(element.textSourceMap, element.textSourceMapLength);
+                element.textSourceMapLength = 0;
+            }
+            setValue(element.getText());
+            element.clearText();
+        }
+
         @Override
         Location getNameLocation() {
             return lineMap.getLocation(0, getName().length());
@@ -318,6 +376,4 @@ class TreeBuilder implements TokenHandler<ParseException> {
             return TextMap.findLocation(beginIndex, endIndex, 0, valueStartOffset, textMap, 0, textMap.length, lineMap);
         }
     }
-
-
 }
