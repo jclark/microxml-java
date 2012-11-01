@@ -559,11 +559,6 @@ public class Element implements Cloneable, Appendable {
         return this;
     }
 
-    protected final void fastAdd(char ch) {
-        if (text.length == textLength)
-            ensureTextCapacity(textLength + 1);
-        text[textLength++] = ch;
-    }
 
     public Element append(char[] buf, int offset, int length) {
         if (length < 0 || offset < 0 || offset + length > buf.length)
@@ -573,6 +568,18 @@ public class Element implements Cloneable, Appendable {
         System.arraycopy(buf, offset, text, textLength, length);
         textLength += length;
         return this;
+    }
+
+    protected final void fastAdd(char ch) {
+        if (text.length == textLength)
+            ensureTextCapacity(textLength + 1);
+        text[textLength++] = ch;
+    }
+
+    protected final void fastAdd(char[] buf, int offset, int length) {
+        ensureTextCapacity(textLength + length);
+        System.arraycopy(buf, offset, text, textLength, length);
+        textLength += length;
     }
 
     private void ensureTextCapacity(int minCapacity) {
