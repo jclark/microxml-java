@@ -58,6 +58,10 @@ class TreeBuilder implements TokenHandler<ParseException> {
     public void literalChars(int position, char[] chars, int offset, int count) throws ParseException {
     }
 
+    public void crLf(int position) throws ParseException {
+
+    }
+
     public void charRef(int position, int refLength, char[] chars) throws ParseException {
     }
 

@@ -10,10 +10,11 @@ import java.util.Arrays;
 // Unquoted attribute values
 // Boolean attributes
 // Extended characters in names
-// Carriage return
 // Better handling of missing closing quote in attributes
 // Skip PIs
 // Skip DOCTYPE decls
+// Need a flag in MarkupCharType saying whether it's the first char in a surrogate, so that error
+// ranges can include the entire code point.
 
 public class Tokenizer<TExc extends Throwable> {
     private TokenHandler<TExc> handler;
@@ -29,17 +30,16 @@ public class Tokenizer<TExc extends Throwable> {
     private int bufStartPosition = 0;
 
     enum ParseError {
-        EOF,
         ISOLATED_SURROGATE,
         INVALID_CODE_POINT,
         UNESCAPED_GT,
         UNESCAPED_LT,
         UNESCAPED_AMP,
-        SYNTAX,
         REF_CODE_POINT_TOO_BIG,
         MISSING_QUOTE,
         UNKNOWN_CHAR_NAME,
-        UNTERMINATED_COMMENT, DOUBLE_MINUS_IN_COMMENT
+        UNTERMINATED_COMMENT,
+        DOUBLE_MINUS_IN_COMMENT
     }
 
     enum MarkupCharType {
@@ -235,7 +235,17 @@ public class Tokenizer<TExc extends Throwable> {
     }
 
     private void parseCr() throws TExc, IOException {
-        // TODO: implement
+        if ((nextIndex + 1 < limit || fillBuf()) && buf[nextIndex + 1] == '\n') {
+            lineMap.addLineStart(bufStartPosition + nextIndex + 2);
+            handler.crLf(bufStartPosition + nextIndex);
+            nextIndex += 2;
+        }
+        else {
+            lineMap.addLineStart(bufStartPosition + nextIndex + 1);
+            buf[nextIndex] = '\n';
+            handler.literalChars(bufStartPosition + nextIndex, buf, nextIndex, 1);
+            nextIndex++;
+        }
     }
 
     private void parseText(char quote) throws TExc, IOException {
@@ -417,7 +427,6 @@ public class Tokenizer<TExc extends Throwable> {
         case 3:
             if (buf[offset] == 'a' && buf[offset + 1] == 'm' && buf[offset + 2] == 'p')
                 return '&';
-            break;
         case 4:
             if (buf[offset + 2] == 'o') {
                 if (buf[offset] == 'q') {
@@ -604,6 +613,8 @@ public class Tokenizer<TExc extends Throwable> {
             }
             else if (c == '&')
                 parseCharRef();
+            else if (c == '\r')
+                parseCr();
             else
                 parseText(quote);
         }

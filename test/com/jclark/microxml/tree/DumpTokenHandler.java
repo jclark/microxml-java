@@ -63,6 +63,11 @@ public class DumpTokenHandler<E extends Throwable> implements TokenHandler<E> {
             out.append('R').append(chars, 0, chars.length).append('\n');
     }
 
+    public void crLf(int position) throws E {
+        out.append('P').append(position).append('\n');
+        out.append('r').append(position).append('\n');
+    }
+
     public void end() throws E {
        out.append('$').append('\n');
     }
