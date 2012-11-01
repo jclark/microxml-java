@@ -6,19 +6,27 @@ import java.util.Arrays;
 /**
  * @author <a href="mailto:jjc@jclark.com">James Clark</a>
  */
-public class Tokenizer<TExc extends Throwable> {
-    TokenHandler<TExc> handler;
+// TODO
+// Unquoted attribute values
+// Boolean attributes
+// Extended characters in names
+// Carriage return
+// Better handling of missing closing quote in attributes
+// Skip PIs
+// Skip DOCTYPE decls
 
-    LineMap lineMap;
+public class Tokenizer<TExc extends Throwable> {
+    private TokenHandler<TExc> handler;
+
+    private LineMap lineMap;
 
     private char[] buf;
+    // index into buf of next text character
+    private int nextIndex = 0;
+    // index past last available character in buf
+    private int limit = 0;
     // char 0 in buf corresponds to this position in the input
-    int bufStartPosition = 0;
-    // next getChar will use this index
-    int nextIndex = 0;
-    // first char in the current token
-
-    int limit = 0;
+    private int bufStartPosition = 0;
 
     enum ParseError {
         EOF,
@@ -30,7 +38,8 @@ public class Tokenizer<TExc extends Throwable> {
         SYNTAX,
         REF_CODE_POINT_TOO_BIG,
         MISSING_QUOTE,
-        UNKNOWN_CHAR_NAME
+        UNKNOWN_CHAR_NAME,
+        UNTERMINATED_COMMENT, DOUBLE_MINUS_IN_COMMENT
     }
 
     enum MarkupCharType {
@@ -225,7 +234,6 @@ public class Tokenizer<TExc extends Throwable> {
         return TextType.NORMAL;
     }
 
-
     private void parseCr() throws TExc, IOException {
         // TODO: implement
     }
@@ -350,9 +358,10 @@ public class Tokenizer<TExc extends Throwable> {
                 parseStartTag();
             else if (m == MarkupCharType.SLASH)
                 parseEndTag();
-            // TODO: handle comment
+            else if (m == MarkupCharType.BANG)
+                parseDecl();
             else
-                giveUp();
+                giveUp(m);
         }
         catch (MarkupException e) {
             error(ParseError.UNESCAPED_LT);
@@ -372,13 +381,13 @@ public class Tokenizer<TExc extends Throwable> {
                 parseNumericCharRef();
                 return;
             }
-            if (m.isNameStart())
-                giveUp();
+            if (!m.isNameStart())
+                giveUp(m);
             do {
                 m = getMarkup();
             } while (m.isNameChar());
             if (m != MarkupCharType.SEMI)
-                giveUp();
+                giveUp(m);
             int ch = lookupCharName(nextIndex + 1, markupIndex - nextIndex - 2);
             if (ch < 0) {
                 error(nextIndex + 1, markupIndex - 1, ParseError.UNKNOWN_CHAR_NAME);
@@ -426,18 +435,20 @@ public class Tokenizer<TExc extends Throwable> {
     }
 
     private void parseNumericCharRef() throws TExc, IOException, MarkupException {
-        if (getMarkupChar() != 'x')
-            giveUp();
-        int codePoint = hexWeight(getMarkupChar());
+        char c = getMarkupChar();
+        if (c != 'x')
+            giveUp(c);
+        c = getMarkupChar();
+        int codePoint = hexWeight(c);
         if (codePoint < 0)
-            giveUp();
+            giveUp(c);
         for (;;) {
-            char c = getMarkupChar();
+            c = getMarkupChar();
             if (c == ';')
                 break;
             int weight = hexWeight(c);
             if (weight < 0)
-                giveUp();
+                giveUp(c);
             // Avoid overflow
             if (codePoint <= Character.MAX_CODE_POINT)
                 codePoint = codePoint * 16 + weight;
@@ -517,7 +528,7 @@ public class Tokenizer<TExc extends Throwable> {
                 if (m == MarkupCharType.SLASH) {
                     m = getMarkup();
                     if (m != MarkupCharType.GT)
-                        giveUp();
+                        giveUp(m);
                     if (!opened) {
                         opened = true;
                         handler.startTagOpen(bufStartPosition + nextIndex, name);
@@ -536,7 +547,7 @@ public class Tokenizer<TExc extends Throwable> {
                     return;
                 }
                 if (!m.isNameStart())
-                    giveUp();
+                    giveUp(m);
                 int attrNamePosition = bufStartPosition + markupIndex - 1;
                 int attrNameLength = 1;
                 for (;;) {
@@ -549,7 +560,7 @@ public class Tokenizer<TExc extends Throwable> {
                 while (m.isWhitespace())
                     m = getMarkup();
                 if (m != MarkupCharType.EQUALS)
-                    giveUp();
+                    giveUp(m);
                 if (!opened) {
                     opened = true;
                     handler.startTagOpen(bufStartPosition + nextIndex, name);
@@ -559,7 +570,7 @@ public class Tokenizer<TExc extends Throwable> {
                 while (m.isWhitespace())
                     m = getMarkup();
                 if (m != MarkupCharType.QUOTE)
-                    giveUp();
+                    giveUp(m);
                 handler.attributeOpen(attrNamePosition, bufStartPosition + markupIndex, attrName);
                 // switch to text mode
                 nextIndex = markupIndex;
@@ -605,7 +616,7 @@ public class Tokenizer<TExc extends Throwable> {
         assert markupIndex == nextIndex + 2;
         MarkupCharType m = getMarkup();
         if (!m.isNameStart())
-            giveUp();
+            giveUp(m);
         do {
             m = getMarkup();
         } while (m.isNameChar());
@@ -613,14 +624,51 @@ public class Tokenizer<TExc extends Throwable> {
         while (m.isWhitespace())
             m = getMarkup();
         if (m != MarkupCharType.GT)
-            giveUp();
+            giveUp(m);
         handler.endTag(bufStartPosition + nextIndex, bufStartPosition + markupIndex, name);
     }
 
-    private void giveUp() throws MarkupException {
+    private void parseDecl() throws TExc, MarkupException, IOException {
+        MarkupCharType m = getMarkup();
+        if (m != MarkupCharType.MINUS)
+            giveUp(m);
+        m = getMarkup();
+        if (m != MarkupCharType.MINUS)
+            giveUp(m);
+        try {
+            for (;;) {
+                m = getMarkup();
+                if (m == MarkupCharType.MINUS) {
+                    m = getMarkup();
+                    if (m == MarkupCharType.MINUS) {
+                        m = getMarkup();
+                        if (m == MarkupCharType.GT)
+                            break;
+                        error(markupIndex - 1, markupIndex, ParseError.DOUBLE_MINUS_IN_COMMENT);
+                    }
+                }
+            }
+        }
+        catch (MarkupException e) {
+            // Cannot reparseAsText because the comment may contain < and &
+            error(nextIndex, markupIndex, ParseError.UNTERMINATED_COMMENT);
+        }
+    }
+
+    private void giveUp(MarkupCharType m) throws MarkupException {
         // We cannot back up past arbitrary characters because this might give us a double error.
         // So only backup past the characters we have to.
-        switch (prevMarkupChar()) {
+        switch (m) {
+        case LT:
+        case GT:
+        case AMP:
+            --markupIndex;
+        }
+        throw new MarkupException();
+    }
+
+    private void giveUp(char c) throws MarkupException {
+        switch (c) {
         case '<':
         case '>':
         case '&':
@@ -751,10 +799,6 @@ public class Tokenizer<TExc extends Throwable> {
         if ((ch & 0xFF80) == 0xDB80)
             return MarkupCharType.EXTENDED_NAME;
         return MarkupCharType.NAME_START;
-    }
-
-    char prevMarkupChar() {
-        return buf[markupIndex - 1];
     }
 
     boolean markupFillBuf() throws IOException {
