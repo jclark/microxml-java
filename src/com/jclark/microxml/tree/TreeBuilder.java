@@ -29,13 +29,6 @@ class TreeBuilder implements TokenHandler<ParseException> {
         expectedTextPosition = 0;
     }
 
-    enum ParseError {
-        TEXT_BEFORE_ROOT,
-        CONTENT_AFTER_ROOT,
-        MISSING_END_TAG,
-        EMPTY_DOCUMENT
-    }
-
     public Element getRoot() {
         return root;
     }
@@ -177,12 +170,8 @@ class TreeBuilder implements TokenHandler<ParseException> {
             textElement.noteMarkup(position - expectedTextPosition);
     }
 
-    public void error(int startPosition, int endPosition, ParseError err) throws ParseException {
-        error(startPosition, endPosition, err.toString());
-    }
-
-    public void error(int startPosition, int endPosition, String message) throws ParseException {
-        throw new ParseException(message, lineMap.getLocation(startPosition, endPosition));
+    public void error(int startPosition, int endPosition, ParseError err, Object... args) throws ParseException {
+        throw new ParseException(err.format(args), lineMap.getLocation(startPosition, endPosition));
     }
 
     /**

@@ -30,19 +30,6 @@ public class Tokenizer<TExc extends Throwable> {
     // char 0 in buf corresponds to this position in the input
     private int bufStartPosition = 0;
 
-    enum ParseError {
-        ISOLATED_SURROGATE,
-        INVALID_CODE_POINT,
-        UNESCAPED_GT,
-        UNESCAPED_LT,
-        UNESCAPED_AMP,
-        REF_CODE_POINT_TOO_BIG,
-        MISSING_QUOTE,
-        UNKNOWN_CHAR_NAME,
-        UNTERMINATED_COMMENT,
-        DOUBLE_MINUS_IN_COMMENT
-    }
-
     enum MarkupCharType {
         /** Valid whitespace characters according to MicroXML */
         WHITESPACE(Flag.WHITESPACE),
@@ -843,10 +830,10 @@ public class Tokenizer<TExc extends Throwable> {
     void error(ParseError err) throws TExc {
         handler.error(bufStartPosition + nextIndex,
                       bufStartPosition + (nextIndex == limit ? nextIndex : nextIndex + 1),
-                      err.toString());
+                      err);
     }
 
     void error(int startIndex, int endIndex, ParseError err) throws TExc {
-        handler.error(bufStartPosition + startIndex, bufStartPosition + endIndex, err.toString());
+        handler.error(bufStartPosition + startIndex, bufStartPosition + endIndex, err);
     }
 }

@@ -73,14 +73,9 @@ public class DumpTokenHandler<E extends Throwable> implements TokenHandler<E> {
        out.append('$').append('\n');
     }
 
-    public void error(int startPosition, int endPosition, String message) throws E {
+    public void error(int startPosition, int endPosition, ParseError error, Object[] args) throws E {
        out.append('P').append(startPosition).append(' ').append(endPosition).append('\n');
-       out.append('E').append(message).append('\n');
-    }
-
-    public void fatal(int startPosition, int endPosition, String message) throws E {
-        out.append('P').append(startPosition).append(' ').append(endPosition).append('\n');
-        out.append('F').append(message).append('\n');
+       out.append('E').append(error.format(args)).append('\n');
     }
 
     static String loadFile(String path) throws IOException {
