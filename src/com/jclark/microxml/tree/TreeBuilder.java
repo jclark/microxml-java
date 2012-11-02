@@ -89,7 +89,7 @@ class TreeBuilder implements TokenHandler<ParseException> {
 
     static int leadingWhitespaceCount(char[] chars, int offset, int count) {
         for (int i = 0; i < count; i++) {
-            switch (chars[i]) {
+            switch (chars[offset + i]) {
             case '\r':
             case '\n':
             case '\t':
