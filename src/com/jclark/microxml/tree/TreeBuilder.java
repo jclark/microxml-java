@@ -18,9 +18,18 @@ class TreeBuilder implements TokenHandler<ParseException> {
     private LocatedElement textElement;
     private int expectedTextPosition;
     private boolean foundContentAfterRoot;
+    private final ErrorHandler eh;
 
-    TreeBuilder(LineMap lineMap) {
+    TreeBuilder(LineMap lineMap, ErrorHandler eh) {
         this.lineMap = lineMap;
+        if (eh == null)
+            this.eh = new ErrorHandler() {
+                public void error(Location location, String message) throws ParseException {
+                    throw new ParseException(message, location);
+                }
+            };
+        else
+            this.eh = eh;
         root = new LocatedElement("#doc", 0, lineMap);
         root.setStartTagCloseOffset(0);
         currentElement = root;
@@ -171,7 +180,7 @@ class TreeBuilder implements TokenHandler<ParseException> {
     }
 
     public void error(int startPosition, int endPosition, ParseError err, Object... args) throws ParseException {
-        throw new ParseException(err.format(args), lineMap.getLocation(startPosition, endPosition));
+        eh.error(lineMap.getLocation(startPosition, endPosition), err.format(args));
     }
 
     /**
