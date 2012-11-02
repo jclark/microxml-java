@@ -16,9 +16,10 @@ enum ParseError {
     DOUBLE_MINUS_IN_COMMENT("comment must not contain \"--\""),
     TEXT_BEFORE_ROOT("text before root element"),
     CONTENT_AFTER_ROOT("text or elements after root element"),
-    MISSING_END_TAG("missing end-tag"),
+    MISSING_END_TAG("start-tag does not have an end-tag"),
     EMPTY_DOCUMENT("empty document"),
-    FORBIDDEN_CODE_POINT_REF("reference to forbidden code point");
+    FORBIDDEN_CODE_POINT_REF("reference to forbidden code point"),
+    MISMATCHED_END_TAG("name in end-tag does not match the name of any open element");
 
     private final String format;
 

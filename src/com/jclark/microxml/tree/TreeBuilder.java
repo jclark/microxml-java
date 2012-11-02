@@ -3,7 +3,7 @@ package com.jclark.microxml.tree;
 import java.util.Arrays;
 
 /**
- * @author <a href="mailto:jjc@jclark.com">James Clark</a>
+ * @author James Clark
  */
 class TreeBuilder implements TokenHandler<ParseException> {
 
@@ -76,11 +76,31 @@ class TreeBuilder implements TokenHandler<ParseException> {
         expectedTextPosition = position;
     }
 
+    private int elementEndCount(String name) {
+        Element elem = currentElement;
+        for (int count = 1; elem != null; ++count) {
+            if (name.equals(elem.getName()))
+                return elem == root ? 0 : count;
+            elem = elem.getParent();
+        }
+        return 0;
+    }
+
     public void endTag(int startPosition, int endPosition, String name) throws ParseException {
-        currentElement.setEndTagOffsets(startPosition, endPosition);
+        int endCount = elementEndCount(name);
+        if (endCount == 0)
+            error(startPosition, endPosition, ParseError.MISMATCHED_END_TAG);
+        else {
+            for (; endCount > 1; --endCount) {
+                currentElement.setEndTagOffsets(startPosition, startPosition);
+                int offset = currentElement.startTagOpenOffset;
+                error(offset, offset + currentElement.getName().length() + 1, ParseError.MISSING_END_TAG);
+                currentElement = (LocatedElement)(currentElement.getParent());
+            }
+            currentElement.setEndTagOffsets(startPosition, endPosition);
+            textElement = currentElement = (LocatedElement)(currentElement.getParent());
+        }
         expectedTextPosition = endPosition;
-        // TODO error checking
-        textElement = currentElement = (LocatedElement)(currentElement.getParent());
     }
 
     static int leadingWhitespaceCount(char[] chars, int offset, int count) {
@@ -162,9 +182,13 @@ class TreeBuilder implements TokenHandler<ParseException> {
     }
 
     public void end(int position) throws ParseException {
-        if (currentElement != root)
-            error(position, position, ParseError.MISSING_END_TAG);
-        else if (!root.hasChildren())
+        while (currentElement != root) {
+            currentElement.setEndTagOffsets(position, position);
+            int offset = currentElement.startTagOpenOffset;
+            error(offset, offset + currentElement.getName().length() + 1, ParseError.MISSING_END_TAG);
+            currentElement = (LocatedElement)(currentElement.getParent());
+        }
+        if (!root.hasChildren())
             error(position, position, ParseError.EMPTY_DOCUMENT);
         if (root.children().size() == 1 && root.getText(0).isEmpty())
             root = (LocatedElement)root.children().remove(0);
