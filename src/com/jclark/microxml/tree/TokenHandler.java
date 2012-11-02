@@ -9,9 +9,9 @@ interface TokenHandler<E extends Throwable> {
     void startTagOpen(int position, String name) throws E;
     void attributeOpen(int namePosition, int valuePosition, String name) throws E;
     void attributeClose() throws E;
-    // position is of '>'
+    // position is following th '>'
     void startTagClose(int position) throws E;
-    // position is of '/>'
+    // position is following the '/>'
     void emptyElementTagClose(int position) throws E;
     void endTag(int startPosition, int endPosition, String name) throws E;
     void literalChars(int position, char[] chars, int offset, int count) throws E;

@@ -66,15 +66,11 @@ class TreeBuilder implements TokenHandler<ParseException> {
     }
 
     public void startTagClose(int position) throws ParseException {
-        // skip past ">"
-        position++;
         currentElement.setStartTagCloseOffset(position);
         expectedTextPosition = position;
     }
 
     public void emptyElementTagClose(int position) throws ParseException {
-        // skip past "/>"
-        position += 2;
         currentElement.setStartTagCloseOffset(position);
         textElement = currentElement = (LocatedElement)(currentElement.getParent());
         expectedTextPosition = position;
