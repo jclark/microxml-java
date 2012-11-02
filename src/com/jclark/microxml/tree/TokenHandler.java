@@ -17,7 +17,6 @@ interface TokenHandler<E extends Throwable> {
     void literalChars(int position, char[] chars, int offset, int count) throws E;
     void charRef(int position, int refLength, char[] chars) throws E;
     void crLf(int position) throws E;
-    void end() throws E;
+    void end(int position) throws E;
     void error(int startPosition, int endPosition, String message) throws E;
-    void fatal(int startPosition, int endPosition, String message) throws E;
 }

@@ -201,7 +201,7 @@ public class Tokenizer<TExc extends Throwable> {
                 break;
             }
         }
-        handler.end();
+        handler.end(bufStartPosition + limit);
     }
 
     enum TextType {

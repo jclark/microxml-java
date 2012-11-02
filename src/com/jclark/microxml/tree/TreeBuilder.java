@@ -16,7 +16,8 @@ class TreeBuilder implements TokenHandler<ParseException> {
     // used as a buffer to build up attribute values
     private LocatedElement attributeValueElement;
     private LocatedElement textElement;
-    private int expectedTextPosition = 0;
+    private int expectedTextPosition;
+    private boolean foundContentAfterRoot;
 
     TreeBuilder(LineMap lineMap) {
         this.lineMap = lineMap;
@@ -24,6 +25,15 @@ class TreeBuilder implements TokenHandler<ParseException> {
         root.setStartTagCloseOffset(0);
         currentElement = root;
         attributeValueElement = new LocatedElement("#att", 0, lineMap);
+        foundContentAfterRoot = false;
+        expectedTextPosition = 0;
+    }
+
+    enum ParseError {
+        TEXT_BEFORE_ROOT,
+        CONTENT_AFTER_ROOT,
+        MISSING_END_TAG,
+        EMPTY_DOCUMENT
     }
 
     public Element getRoot() {
@@ -31,6 +41,10 @@ class TreeBuilder implements TokenHandler<ParseException> {
     }
 
     public void startTagOpen(int position, String name) throws ParseException {
+        if (currentElement == root && root.hasChildren() && !foundContentAfterRoot) {
+            error(position, position + 1 + name.length(), ParseError.CONTENT_AFTER_ROOT);
+            foundContentAfterRoot = true;
+        }
         LocatedElement elem = new LocatedElement(name, position, lineMap);
         currentElement.append(elem);
         textElement = currentElement = elem;
@@ -71,25 +85,59 @@ class TreeBuilder implements TokenHandler<ParseException> {
         textElement = currentElement = (LocatedElement)(currentElement.getParent());
     }
 
-    static boolean isWhitespace(char c) {
-        switch (c) {
-        case '\r':
-        case '\n':
-        case '\t':
-        case ' ':
-        case '\f':
-            return true;
+    static int leadingWhitespaceCount(char[] chars, int offset, int count) {
+        for (int i = 0; i < count; i++) {
+            switch (chars[i]) {
+            case '\r':
+            case '\n':
+            case '\t':
+            case ' ':
+            case '\f':
+                break;
+            default:
+                return i;
+            }
         }
-        return false;
+        return count;
     }
 
     public void literalChars(int position, char[] chars, int offset, int count) throws ParseException {
+        assert count > 0;
+        if (textElement == root) {
+            if (!root.hasChildren()) {
+                if (!root.hasText()) {
+                    if (position == 0 && chars[offset] == BYTE_ORDER_MARK) {
+                        offset++;
+                        position++;
+                        count--;
+                    }
+                    int ns = leadingWhitespaceCount(chars, offset, count);
+                    if (ns > 0) {
+                        offset += ns;
+                        count -= ns;
+                        position += ns;
+                    }
+                    if (count == 0)
+                        return;
+                    error(position, position + count, ParseError.TEXT_BEFORE_ROOT);
+                }
+            }
+            else if (!foundContentAfterRoot) {
+                int ns = leadingWhitespaceCount(chars, offset, count);
+                if (ns < count) {
+                    error(position + ns, position + count, ParseError.CONTENT_AFTER_ROOT);
+                    foundContentAfterRoot = true;
+                }
+            }
+        }
         setTextPosition(position);
         textElement.fastAdd(chars, offset, count);
         expectedTextPosition = position + count;
     }
 
     public void crLf(int position) throws ParseException {
+        if (textElement == root && !root.hasContent())
+            return;
         setTextPosition(position);
         textElement.fastAdd('\n');
         textElement.hadCrLf();
@@ -97,6 +145,16 @@ class TreeBuilder implements TokenHandler<ParseException> {
     }
 
     public void charRef(int position, int refLength, char[] chars) throws ParseException {
+        if (textElement == root) {
+            if (!root.hasChildren()) {
+                if (!root.hasText())
+                    error(position, position + refLength, ParseError.TEXT_BEFORE_ROOT);
+            }
+            else if (!foundContentAfterRoot) {
+                error(position, position + refLength, ParseError.CONTENT_AFTER_ROOT);
+                foundContentAfterRoot = true;
+            }
+        }
         setTextPosition(position);
         if (chars.length == 1)
             textElement.addCharRef(chars[0], refLength);
@@ -105,8 +163,13 @@ class TreeBuilder implements TokenHandler<ParseException> {
         expectedTextPosition = position + refLength;
     }
 
-    public void end() throws ParseException {
-        // TODO
+    public void end(int position) throws ParseException {
+        if (currentElement != root)
+            error(position, position, ParseError.MISSING_END_TAG);
+        else if (!root.hasChildren())
+            error(position, position, ParseError.EMPTY_DOCUMENT);
+        if (root.children().size() == 1 && root.getText(0).isEmpty())
+            root = (LocatedElement)root.children().remove(0);
     }
 
     private void setTextPosition(int position) {
@@ -114,11 +177,11 @@ class TreeBuilder implements TokenHandler<ParseException> {
             textElement.noteMarkup(position - expectedTextPosition);
     }
 
-    public void error(int startPosition, int endPosition, String message) throws ParseException {
-        fatal(startPosition, endPosition, message);
+    public void error(int startPosition, int endPosition, ParseError err) throws ParseException {
+        error(startPosition, endPosition, err.toString());
     }
 
-    public void fatal(int startPosition, int endPosition, String message) throws ParseException {
+    public void error(int startPosition, int endPosition, String message) throws ParseException {
         throw new ParseException(message, lineMap.getLocation(startPosition, endPosition));
     }
 
@@ -293,7 +356,7 @@ class TreeBuilder implements TokenHandler<ParseException> {
         void addCharRef(char c1, char c2, int length) {
             // TODO handle excessive length by adding a markup entry
             addTextMapEntry(getTextLength());
-            addTextMapEntry(length|TextMap.CONTINUE_FLAG|TextMap.SURROGATE_PAIR_FLAG);
+            addTextMapEntry(length | TextMap.CONTINUE_FLAG | TextMap.SURROGATE_PAIR_FLAG);
             fastAdd(c1);
             fastAdd(c2);
         }

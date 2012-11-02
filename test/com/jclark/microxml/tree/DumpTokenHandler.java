@@ -68,7 +68,8 @@ public class DumpTokenHandler<E extends Throwable> implements TokenHandler<E> {
         out.append('r').append(position).append('\n');
     }
 
-    public void end() throws E {
+    public void end(int position) throws E {
+       out.append('P').append(position).append('\n');
        out.append('$').append('\n');
     }
 
