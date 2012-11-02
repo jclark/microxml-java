@@ -17,7 +17,8 @@ enum ParseError {
     TEXT_BEFORE_ROOT("text before root element"),
     CONTENT_AFTER_ROOT("text or elements after root element"),
     MISSING_END_TAG("missing end-tag"),
-    EMPTY_DOCUMENT("empty document");
+    EMPTY_DOCUMENT("empty document"),
+    FORBIDDEN_CODE_POINT_REF("reference to forbidden code point");
 
     private final String format;
 

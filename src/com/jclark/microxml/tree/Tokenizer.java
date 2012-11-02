@@ -4,10 +4,11 @@ import java.io.IOException;
 import java.util.Arrays;
 
 /**
- * @author <a href="mailto:jjc@jclark.com">James Clark</a>
+ * @author James Clark
  */
 // TODO
 // Be able to parse from a Reader
+// Option not to replace forbidden characters
 // Unquoted attribute values
 // Boolean attributes
 // Extended characters in names
@@ -17,7 +18,7 @@ import java.util.Arrays;
 // Need a flag in MarkupCharType saying whether it's the first char in a surrogate, so that error
 // ranges can include the entire code point.
 
-public class Tokenizer<TExc extends Throwable> {
+class Tokenizer<TExc extends Throwable> {
     private TokenHandler<TExc> handler;
 
     private LineMap lineMap;
@@ -375,31 +376,34 @@ public class Tokenizer<TExc extends Throwable> {
         markupIndex = nextIndex + 1;
         try {
             MarkupCharType m = getMarkup();
-            if (m == MarkupCharType.HASH) {
+            if (m == MarkupCharType.HASH)
                 parseNumericCharRef();
-                return;
-            }
-            if (!m.isNameStart())
-                giveUp(m);
-            do {
-                m = getMarkup();
-            } while (m.isNameChar());
-            if (m != MarkupCharType.SEMI)
-                giveUp(m);
-            int ch = lookupCharName(nextIndex + 1, markupIndex - nextIndex - 2);
-            if (ch < 0) {
-                error(nextIndex + 1, markupIndex - 1, ParseError.UNKNOWN_CHAR_NAME);
-                // Maybe better to treat the whole reference as text
-                ch = REPLACEMENT_CHAR;
-            }
-            charRef1[0] = (char)ch;
-            handler.charRef(nextIndex, markupIndex - nextIndex, charRef1);
+            else
+                parseNamedCharRef(m);
         }
         catch (MarkupException e) {
             error(ParseError.UNESCAPED_AMP);
             reparseAsText();
         }
         nextIndex = markupIndex;
+    }
+
+    private void parseNamedCharRef(MarkupCharType m) throws TExc, IOException, MarkupException {
+        if (!m.isNameStart())
+            giveUp(m);
+        do {
+            m = getMarkup();
+        } while (m.isNameChar());
+        if (m != MarkupCharType.SEMI)
+            giveUp(m);
+        int ch = lookupCharName(nextIndex + 1, markupIndex - nextIndex - 2);
+        if (ch < 0) {
+            error(nextIndex + 1, markupIndex - 1, ParseError.UNKNOWN_CHAR_NAME);
+            // Maybe better to treat the whole reference as text
+            ch = REPLACEMENT_CHAR;
+        }
+        charRef1[0] = (char)ch;
+        handler.charRef(nextIndex, markupIndex - nextIndex, charRef1);
     }
 
     private int lookupCharName(int offset, int length) {
@@ -454,6 +458,11 @@ public class Tokenizer<TExc extends Throwable> {
             error(nextIndex + 3, markupIndex - 1, ParseError.REF_CODE_POINT_TOO_BIG);
             codePoint = REPLACEMENT_CHAR;
         }
+        else if (isCodePointForbidden(codePoint)) {
+            error(nextIndex + 3, markupIndex - 1, ParseError.FORBIDDEN_CODE_POINT_REF);
+            if (replaceCodePoint(codePoint))
+                codePoint = REPLACEMENT_CHAR;
+        }
         char[] ref;
         if (codePoint <= 0xFFFF) {
             charRef1[0] = (char)codePoint;
@@ -464,6 +473,20 @@ public class Tokenizer<TExc extends Throwable> {
             ref = charRef2;
         }
         handler.charRef(bufStartPosition + nextIndex, bufStartPosition + markupIndex - nextIndex, ref);
+    }
+
+    static private boolean isCodePointForbidden(int codePoint) {
+        if (codePoint <= 0xFF)
+            return codePoint == 0xD || latin1CharTable[codePoint].isForbidden();
+        if (codePoint < 0xD800)
+            return false;
+        if (codePoint < 0xE000)
+            return true;
+        if (codePoint < 0xFDD0)
+            return false;
+        if (codePoint < 0xFDF0)
+            return true;
+        return (codePoint & 0xFFFE) == 0xFFFE;
     }
 
     static private int hexWeight(char c) {
@@ -704,7 +727,7 @@ public class Tokenizer<TExc extends Throwable> {
             MarkupCharType t = latin1CharTable[ch];
             if (t.isForbidden()) {
                 error(markupIndex - 1, markupIndex, ParseError.INVALID_CODE_POINT);
-                if (replaceChar(ch)) {
+                if (replaceCodePoint(ch)) {
                     buf[markupIndex] = REPLACEMENT_CHAR;
                     return REPLACEMENT_TYPE;
                 }
@@ -754,7 +777,7 @@ public class Tokenizer<TExc extends Throwable> {
                 return MarkupCharType.EXTENDED_NAME;
             if (ch >= 0xFDD0 && (ch <= 0xFDEF || ch >= 0xFFFE)) {
                 error(markupIndex - 1, markupIndex, ParseError.INVALID_CODE_POINT);
-                if (replaceChar(ch)) {
+                if (replaceCodePoint(ch)) {
                     buf[markupIndex] = REPLACEMENT_CHAR;
                     return REPLACEMENT_TYPE;
                 }
@@ -765,7 +788,7 @@ public class Tokenizer<TExc extends Throwable> {
         return MarkupCharType.NAME_START;
     }
 
-    private boolean replaceChar(char ch) {
+    private boolean replaceCodePoint(int codePoint) {
         return true;
     }
 
@@ -773,7 +796,7 @@ public class Tokenizer<TExc extends Throwable> {
         if (isSurrogate2(ch)) {
             if (!isSurrogate1(buf[markupIndex - 2])) {
                 error(markupIndex - 1, markupIndex, ParseError.ISOLATED_SURROGATE);
-                if (replaceChar(ch)) {
+                if (replaceCodePoint(ch)) {
                     buf[markupIndex - 1] = REPLACEMENT_CHAR;
                     return REPLACEMENT_TYPE;
                 }
@@ -784,7 +807,7 @@ public class Tokenizer<TExc extends Throwable> {
         char ch2;
         if ((markupIndex == limit && !markupFillBuf()) || !isSurrogate2(ch2 = buf[markupIndex])) {
             error(markupIndex - 1, markupIndex, ParseError.ISOLATED_SURROGATE);
-            if (replaceChar(ch)) {
+            if (replaceCodePoint(ch)) {
                 buf[markupIndex - 1] = REPLACEMENT_CHAR;
                 return REPLACEMENT_TYPE;
             }
@@ -827,13 +850,14 @@ public class Tokenizer<TExc extends Throwable> {
         return (ch2 & 0x3FE) == 0x3FE && (ch1 & 0x3F) == 0x3F;
     }
 
-    void error(ParseError err) throws TExc {
+    void error(ParseError err, Object... args) throws TExc {
         handler.error(bufStartPosition + nextIndex,
                       bufStartPosition + (nextIndex == limit ? nextIndex : nextIndex + 1),
-                      err);
+                      err,
+                      args);
     }
 
-    void error(int startIndex, int endIndex, ParseError err) throws TExc {
-        handler.error(bufStartPosition + startIndex, bufStartPosition + endIndex, err);
+    void error(int startIndex, int endIndex, ParseError err, Object... args) throws TExc {
+        handler.error(bufStartPosition + startIndex, bufStartPosition + endIndex, err, args);
     }
 }
