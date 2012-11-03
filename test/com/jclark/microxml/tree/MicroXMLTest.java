@@ -1,5 +1,6 @@
 package com.jclark.microxml.tree;
 
+import com.sun.jmx.snmp.EnumRowStatus;
 import com.sun.servicetag.SystemEnvironment;
 
 import java.io.File;
@@ -12,7 +13,9 @@ import java.io.PrintStream;
  */
 public class MicroXMLTest {
     static public void main(String[] args) throws IOException, ParseException {
-        Element element = MicroXML.parse(loadFile(args[0]), new ParseOptions(new ErrorPrinter()));
+        ParseOptions options = new ParseOptions();
+        options.setErrorHandler(new ErrorPrinter()).setURL(args[0]);
+        Element element = MicroXML.parse(loadFile(args[0]), options);
         MicroXML.canonicalize(element, new File(args[1]));
     }
 
@@ -28,7 +31,7 @@ public class MicroXMLTest {
 
         public void error(Location location, String message) throws ParseException {
             LinePosition lp = location.getStartLinePosition();
-            err.printf("%d:%d: %s\n", lp.getLineNumber(), lp.getColumnNumber(), message);
+            err.printf("%s:%d:%d: %s\n", location.getURL(), lp.getLineNumber(), lp.getColumnNumber(), message);
         }
     }
 

@@ -43,7 +43,8 @@ public class MicroXML {
     }
 
     static public Element parse(String document, ParseOptions options) throws ParseException {
-        LineMap lineMap = new LineMap(null);
+        Util.requireNonNull(options);
+        LineMap lineMap = new LineMap(options.getURL());
         TreeBuilder treeBuilder = new TreeBuilder(lineMap, options);
         Tokenizer<ParseException> tokenizer = new Tokenizer<ParseException>(lineMap, document, treeBuilder);
         try {
@@ -56,6 +57,6 @@ public class MicroXML {
     }
 
     static public Element parse(String document) throws ParseException {
-        return parse(document, null);
+        return parse(document, new ParseOptions());
     }
 }

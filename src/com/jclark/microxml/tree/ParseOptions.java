@@ -15,6 +15,7 @@ public class ParseOptions {
             };
     private ErrorHandler errorHandler = defaultErrorHandler;
     private final EnumSet<ParseError> suppressedErrors = EnumSet.noneOf(ParseError.class);
+    private String url;
 
     public ParseOptions() {
     }
@@ -35,6 +36,22 @@ public class ParseOptions {
 
     static public ErrorHandler getDefaultErrorHandler() {
         return defaultErrorHandler;
+    }
+
+    public String getURL() {
+        return url;
+    }
+
+    /**
+     * Sets the URL of the input stream being parsed.
+     * This is used in reporting errors.
+     * @param url the URL of the input stream being parsed.
+     * @return a reference to this object
+     * @see Location#getURL
+     */
+    public ParseOptions setURL(String url) {
+        this.url = url;
+        return this;
     }
 
     EnumSet<ParseError> getSuppressedErrors() {
