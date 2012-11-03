@@ -29,7 +29,7 @@ class TreeBuilder implements TokenHandler<ParseException> {
         suppressedErrors = options.getSuppressedErrors().clone();
         root = new LocatedElement("#doc", 0, lineMap);
         root.setStartTagCloseOffset(0);
-        currentElement = root;
+        textElement = currentElement = root;
         attributeValueElement = new LocatedElement("#att", 0, lineMap);
         foundContentAfterRoot = false;
         expectedTextPosition = 0;
