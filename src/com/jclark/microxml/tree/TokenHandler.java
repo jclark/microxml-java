@@ -1,9 +1,14 @@
 package com.jclark.microxml.tree;
 
 /**
- * Every open has to have a matching close.
- * A startTagOpen can be closed by either a startTagClose or an emptyElementClose.
- * @author <a href="mailto:jjc@jclark.com">James Clark</a>
+ * Interface between frontend and backend of MicroXML parsing.
+ * Frontend is {@link Tokenizer}; backend is {@link TreeBuilder}.
+ * No guarantee is made that every startTag has a matching endTag,
+ * nor about where text occurs.
+ * Every call to a *open method is guaranteed to have a call to a matching *close method:
+ * a startTagOpen can be closed by either a startTagClose or an emptyElementClose.
+ *
+ * @author James Clark
  */
 interface TokenHandler<E extends Throwable> {
     void startTagOpen(int position, String name) throws E;
