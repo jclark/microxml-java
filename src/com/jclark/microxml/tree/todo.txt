@@ -46,3 +46,8 @@ MicroXML errors that are not XML errors should be distinct ParseErrors. Method o
 suppress all these errors.
 
 Optionally normalize attribute values a la XML.
+
+Option to specify character entities to use for recovery.
+
+Option to use schema information.
+
