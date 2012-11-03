@@ -22,7 +22,7 @@ class LineMap {
     // line start indices must be strictly increasing
     void addLineStart(int offset) {
         if (offset <= 0
-            || (count > 0 && lineStartOffset[count] >= offset))
+            || (count > 0 && lineStartOffset[count - 1] >= offset))
             throw new IllegalArgumentException();
         if (count == lineStartOffset.length)
             lineStartOffset = Arrays.copyOf(lineStartOffset, lineStartOffset.length * 2);
