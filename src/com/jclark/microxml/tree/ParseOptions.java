@@ -27,9 +27,10 @@ public class ParseOptions {
         return errorHandler;
     }
 
-    public void setErrorHandler(ErrorHandler errorHandler) {
+    public ParseOptions setErrorHandler(ErrorHandler errorHandler) {
         Util.requireNonNull(errorHandler);
         this.errorHandler = errorHandler;
+        return this;
     }
 
     static public ErrorHandler getDefaultErrorHandler() {
