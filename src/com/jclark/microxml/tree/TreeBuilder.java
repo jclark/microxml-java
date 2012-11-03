@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 
 /**
+ * Backend of MicroXML parsing.
  * @author James Clark
  */
 class TreeBuilder implements TokenHandler<ParseException> {
