@@ -1,5 +1,3 @@
-MicroXML parser that handles Locations.
-
 Method on Element to compare document order of two elements. Maybe implement Comparable and return value based
 on document order.  This will require an ordering a root nodes. Add a RootInfo field to Element: lazily create
 this for root Elements and include in it a sequence number. (Could also use RootInfo for a tree modCount.)
@@ -23,3 +21,5 @@ Do querying like Stream in Java 8.
 
 XML Builder should have PIHandler property to be able to process PIs before the Document Element.
 
+MicroXML errors that are not XML errors should be distinct ParseErrors. Method on ParseOptions to
+suppress all these errors.

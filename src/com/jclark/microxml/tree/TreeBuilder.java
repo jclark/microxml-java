@@ -1,6 +1,7 @@
 package com.jclark.microxml.tree;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 
 /**
  * @author James Clark
@@ -19,17 +20,12 @@ class TreeBuilder implements TokenHandler<ParseException> {
     private int expectedTextPosition;
     private boolean foundContentAfterRoot;
     private final ErrorHandler eh;
+    private final EnumSet<ParseError> suppressedErrors;
 
-    TreeBuilder(LineMap lineMap, ErrorHandler eh) {
+    TreeBuilder(LineMap lineMap, ParseOptions options) {
         this.lineMap = lineMap;
-        if (eh == null)
-            this.eh = new ErrorHandler() {
-                public void error(Location location, String message) throws ParseException {
-                    throw new ParseException(message, location);
-                }
-            };
-        else
-            this.eh = eh;
+        eh = options.getErrorHandler();
+        suppressedErrors = options.getSuppressedErrors().clone();
         root = new LocatedElement("#doc", 0, lineMap);
         root.setStartTagCloseOffset(0);
         currentElement = root;
@@ -200,7 +196,8 @@ class TreeBuilder implements TokenHandler<ParseException> {
     }
 
     public void error(int startPosition, int endPosition, ParseError err, Object... args) throws ParseException {
-        eh.error(lineMap.getLocation(startPosition, endPosition), err.format(args));
+        if (!suppressedErrors.contains(err))
+            eh.error(lineMap.getLocation(startPosition, endPosition), err.format(args));
     }
 
     /**

@@ -12,7 +12,7 @@ import java.io.PrintStream;
  */
 public class MicroXMLTest {
     static public void main(String[] args) throws IOException, ParseException {
-        Element element = MicroXML.parse(loadFile(args[0]), new ErrorPrinter());
+        Element element = MicroXML.parse(loadFile(args[0]), new ParseOptions(new ErrorPrinter()));
         MicroXML.canonicalize(element, new File(args[1]));
     }
 

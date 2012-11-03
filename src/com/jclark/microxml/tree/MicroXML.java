@@ -42,9 +42,9 @@ public class MicroXML {
         return new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), Charset.forName("UTF-8")));
     }
 
-    static public Element parse(String document, ErrorHandler eh) throws ParseException {
+    static public Element parse(String document, ParseOptions options) throws ParseException {
         LineMap lineMap = new LineMap(null);
-        TreeBuilder treeBuilder = new TreeBuilder(lineMap, eh);
+        TreeBuilder treeBuilder = new TreeBuilder(lineMap, options);
         Tokenizer<ParseException> tokenizer = new Tokenizer<ParseException>(lineMap, document, treeBuilder);
         try {
             tokenizer.parse();
