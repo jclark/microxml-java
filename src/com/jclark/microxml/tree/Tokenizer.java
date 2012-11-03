@@ -1,6 +1,10 @@
 package com.jclark.microxml.tree;
 
+import sun.nio.cs.StreamDecoder;
+
 import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
 import java.util.Arrays;
 
 /**
@@ -18,9 +22,14 @@ class Tokenizer<TExc extends Throwable> {
     // index into buf of next text character
     private int nextIndex = 0;
     // index past last available character in buf
-    private int limit = 0;
+    private int limit;
     // char 0 in buf corresponds to this position in the input
     private int bufStartPosition = 0;
+    private Reader reader;
+    // Make this twice the size of the default buffer for BufferedReader
+    static final int DEFAULT_BUF_SIZE = 16 * 1024;
+    // Minimum characters to read() at a time.
+    static final int MIN_READ = 1024;
 
     enum MarkupCharType {
         /** Valid whitespace characters according to MicroXML */
@@ -156,10 +165,28 @@ class Tokenizer<TExc extends Throwable> {
     static private final char REPLACEMENT_CHAR = 0xFFFD;
     static private final MarkupCharType REPLACEMENT_TYPE = MarkupCharType.NAME_START;
 
-    Tokenizer(LineMap lineMap, String source, TokenHandler<TExc> handler) {
+    Tokenizer(Reader reader, LineMap lineMap, TokenHandler<TExc> handler) {
+        this(lineMap, handler);
+        buf = new char[DEFAULT_BUF_SIZE];
+        limit = 0;
+        this.reader = reader;
+    }
+
+    Tokenizer(String source, LineMap lineMap, TokenHandler<TExc> handler) {
+        this(lineMap, handler);
+        if (source.length() <= DEFAULT_BUF_SIZE) {
+            buf = source.toCharArray();
+            limit = buf.length;
+            reader = null;
+        }
+        else {
+            reader = new StringReader(source);
+            limit = 0;
+        }
+    }
+
+    private Tokenizer(LineMap lineMap, TokenHandler<TExc> handler) {
         this.lineMap = lineMap;
-        buf = source.toCharArray();
-        this.limit = buf.length;
         this.handler = handler;
     }
 
@@ -648,6 +675,7 @@ class Tokenizer<TExc extends Throwable> {
         m = getMarkup();
         if (m != MarkupCharType.MINUS)
             giveUp(m);
+        // TODO Avoid buffering up the whole comment
         try {
             for (;;) {
                 m = getMarkup();
@@ -815,14 +843,53 @@ class Tokenizer<TExc extends Throwable> {
     }
 
     boolean markupFillBuf() throws IOException {
-        // TODO
-        return false;
+        int n = markupIndex - nextIndex;
+        boolean ret = fillBuf();
+        markupIndex = nextIndex + n;
+        return ret;
     }
 
     // keep characters between nextIndex and limit
     boolean fillBuf() throws IOException {
-        // TODO
-        return false;
+        if (reader == null)
+            return false;
+        int nKeep = limit - nextIndex;
+        if (buf.length - nKeep >= MIN_READ) {
+            // No need to resize
+            // If there's a small amount left over, then always copy to the beginning of the buffer
+            if (nKeep < 8) {
+                for (int i = 0; i < nKeep; i++)
+                    buf[i] = buf[nextIndex + i];
+                bufStartPosition += nextIndex;
+                nextIndex = 0;
+                limit = nKeep;
+            }
+            // Otherwise if there's enough space in the buffer, avoid copying
+            else if (buf.length - limit < MIN_READ) {
+                System.arraycopy(buf, nextIndex, buf, 0, nKeep);
+                bufStartPosition += nextIndex;
+                limit = nKeep;
+                nextIndex = 0;
+            }
+        }
+        else {
+            char[] newBuf = new char[buf.length * 2];
+            if (nKeep > 0)
+                System.arraycopy(buf, nextIndex, newBuf, 0, nKeep);
+            limit = nKeep;
+            bufStartPosition += nextIndex;
+            nextIndex = 0;
+            buf = newBuf;
+        }
+        assert limit < buf.length;
+        int nRead = reader.read(buf, limit, buf.length - limit);
+        assert nRead != 0;
+        if (nRead < 0) {
+            reader = null;
+            return false;
+        }
+        limit += nRead;
+        return true;
     }
 
     private boolean hasNextChar() throws IOException {

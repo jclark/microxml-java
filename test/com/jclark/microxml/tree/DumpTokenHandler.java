@@ -4,10 +4,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.channels.FileChannel;
+import java.io.Reader;
+import java.nio.charset.Charset;
 
 /**
- * @author <a href="mailto:jjc@jclark.com">James Clark</a>
+ * @author James Clark
  */
 public class DumpTokenHandler<E extends Throwable> implements TokenHandler<E> {
     StringBuilder out = new StringBuilder();
@@ -78,26 +79,10 @@ public class DumpTokenHandler<E extends Throwable> implements TokenHandler<E> {
        out.append('E').append(error.format(args)).append('\n');
     }
 
-    static String loadFile(String path) throws IOException {
-        File file = new File(path);
-        FileInputStream f = new FileInputStream(file);
-        long length = file.length();
-        if (length == 0)
-            return "";
-        if (length > Integer.MAX_VALUE)
-            throw new IOException("file too big");
-        byte[] buffer = new byte[(int)length];
-        if (f.read(buffer, 0, buffer.length) != buffer.length)
-            throw new IOException("read length");
-        return new String(buffer, 0, buffer.length, "UTF-8");
-    }
-
     static public void main(String[] args) throws IOException {
         DumpTokenHandler<RuntimeException> dumper = new DumpTokenHandler<RuntimeException>();
-        Tokenizer<RuntimeException> tok = new Tokenizer<RuntimeException>(new LineMap(args[0]),
-                                                                          loadFile(args[0]),
-                                                                          dumper);
-        tok.parse();
+        Reader reader = new InputStreamReader(new FileInputStream(args[0]), Charset.forName("UTF-8"));
+        new Tokenizer<RuntimeException>(reader, new LineMap(args[0]), dumper).parse();
         System.out.print(dumper.out.toString());
     }
 }

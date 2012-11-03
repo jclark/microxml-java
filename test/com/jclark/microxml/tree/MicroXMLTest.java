@@ -1,21 +1,17 @@
 package com.jclark.microxml.tree;
 
-import com.sun.jmx.snmp.EnumRowStatus;
-import com.sun.servicetag.SystemEnvironment;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 
 /**
- * @author <a href="mailto:jjc@jclark.com">James Clark</a>
+ * @author James Clark
  */
 public class MicroXMLTest {
     static public void main(String[] args) throws IOException, ParseException {
-        ParseOptions options = new ParseOptions();
-        options.setErrorHandler(new ErrorPrinter()).setURL(args[0]);
-        Element element = MicroXML.parse(loadFile(args[0]), options);
+        Element element = MicroXML.parse(new File(args[0]),
+                                         new ParseOptions(new ErrorPrinter()));
         MicroXML.canonicalize(element, new File(args[1]));
     }
 

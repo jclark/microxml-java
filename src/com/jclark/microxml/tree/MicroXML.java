@@ -2,14 +2,20 @@ package com.jclark.microxml.tree;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.Charset;
 
 /**
- * @author <a href="mailto:jjc@jclark.com">James Clark</a>
+ * Contains methods parsing and serializing MicroXML.
+ *
+ * @see Element
+ * @author James Clark
  */
 public class MicroXML {
     private MicroXML() {}
@@ -39,20 +45,37 @@ public class MicroXML {
     }
 
     static private Writer fileWriter(File file) throws IOException {
-        return new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), Charset.forName("UTF-8")));
+        return new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), UTF8));
     }
 
     static public Element parse(String document, ParseOptions options) throws ParseException {
         Util.requireNonNull(options);
         LineMap lineMap = new LineMap(options.getURL());
         TreeBuilder treeBuilder = new TreeBuilder(lineMap, options);
-        Tokenizer<ParseException> tokenizer = new Tokenizer<ParseException>(lineMap, document, treeBuilder);
+        Tokenizer<ParseException> tokenizer = new Tokenizer<ParseException>(document, lineMap, treeBuilder);
         try {
             tokenizer.parse();
         }
         catch (IOException e) {
             throw new AssertionError();
         }
+        return treeBuilder.getRoot();
+    }
+
+    private static final Charset UTF8 = Charset.forName("UTF-8");
+
+    static public Element parse(File file, ParseOptions options) throws ParseException, IOException {
+        LineMap lineMap = new LineMap(file.toURI().toString());
+        Reader reader = new InputStreamReader(new FileInputStream(file), UTF8);
+        TreeBuilder treeBuilder = new TreeBuilder(lineMap, options);
+        new Tokenizer<ParseException>(reader, lineMap, treeBuilder).parse();
+        return treeBuilder.getRoot();
+    }
+
+    static public Element parse(Reader reader, ParseOptions options) throws ParseException, IOException {
+        LineMap lineMap = new LineMap(options.getURL());
+        TreeBuilder treeBuilder = new TreeBuilder(lineMap, options);
+        new Tokenizer<ParseException>(reader, lineMap, treeBuilder).parse();
         return treeBuilder.getRoot();
     }
 
