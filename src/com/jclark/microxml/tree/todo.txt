@@ -1,3 +1,5 @@
+Web app to show recovered tree and errors.
+
 Method on Element to compare document order of two elements. Maybe implement Comparable and return value based
 on document order.  This will require an ordering a root nodes. Add a RootInfo field to Element: lazily create
 this for root Elements and include in it a sequence number. (Could also use RootInfo for a tree modCount.)
