@@ -2,9 +2,9 @@ Method on Element to compare document order of two elements. Maybe implement Com
 on document order.  This will require an ordering a root nodes. Add a RootInfo field to Element: lazily create
 this for root Elements and include in it a sequence number. (Could also use RootInfo for a tree modCount.)
 
-toString methods
+toString methods on Element.
 
-It would be nice if it was possible to share a superclass with an immutable implementation.
+It would be nice if Element could share a superclass with an immutable implementation.
 
 trimToSize on Element and AttributeSet
 
@@ -21,5 +21,26 @@ Do querying like Stream in Java 8.
 
 XML Builder should have PIHandler property to be able to process PIs before the Document Element.
 
+Option not to replace forbidden characters.
+
+Recover from unquoted attribute values.
+
+Recover from HTML-style boolean attributes.
+
+Recover better from extended characters in names.
+
+Better handling of missing closing quote in attributes.
+
+Make sure error ranges always include both halves of a surrogate (perhaps need a flag in MarkupCharType saying whether
+it's the first char in a surrogate).
+
+Recover from processing instructions.
+
+Recover from DOCTYPE decls.
+
+Recover from CDATA sections.
+
 MicroXML errors that are not XML errors should be distinct ParseErrors. Method on ParseOptions to
 suppress all these errors.
+
+Optionally normalize attribute values a la XML.

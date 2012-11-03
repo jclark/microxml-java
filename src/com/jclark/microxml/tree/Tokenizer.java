@@ -4,19 +4,10 @@ import java.io.IOException;
 import java.util.Arrays;
 
 /**
+ * Front end of MicroXML parsing.
+ * This makes calls into {@link TokenHandler}.
  * @author James Clark
  */
-// TODO
-// Be able to parse from a Reader
-// Option not to replace forbidden characters
-// Unquoted attribute values
-// Boolean attributes
-// Extended characters in names
-// Better handling of missing closing quote in attributes
-// Skip PIs
-// Skip DOCTYPE decls
-// Need a flag in MarkupCharType saying whether it's the first char in a surrogate, so that error
-// ranges can include the entire code point.
 
 class Tokenizer<TExc extends Throwable> {
     private TokenHandler<TExc> handler;
