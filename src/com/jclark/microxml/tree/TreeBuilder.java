@@ -50,14 +50,21 @@ class TreeBuilder implements TokenHandler<ParseException> {
     }
 
     public void attributeOpen(int namePosition, int valuePosition, String name) throws ParseException {
+        if (name.equals("xmlns"))
+            error(namePosition, namePosition + name.length(), ParseError.XMLNS_ATTRIBUTE);
         currentAttribute = new LocatedAttribute(name, namePosition, valuePosition, lineMap);
+        try {
+            currentElement.add(currentAttribute);
+        }
+        catch (DuplicateAttributeException e) {
+            error(namePosition, namePosition + name.length(), ParseError.DUPLICATE_ATTRIBUTE);
+        }
         expectedTextPosition = valuePosition;
         textElement = attributeValueElement;
     }
 
     public void attributeClose() throws ParseException {
         currentAttribute.setValue(attributeValueElement);
-        currentElement.add(currentAttribute);
         currentAttribute = null;
         textElement = currentElement;
     }

@@ -19,7 +19,9 @@ enum ParseError {
     MISSING_END_TAG("start-tag does not have an end-tag"),
     EMPTY_DOCUMENT("empty document"),
     FORBIDDEN_CODE_POINT_REF("reference to forbidden code point"),
-    MISMATCHED_END_TAG("name in end-tag does not match the name of any open element");
+    MISMATCHED_END_TAG("name in end-tag does not match the name of any open element"),
+    DUPLICATE_ATTRIBUTE("duplicate attribute name"),
+    XMLNS_ATTRIBUTE("an attribute must not have the name \"xmlns\"");
 
     private final String format;
 
