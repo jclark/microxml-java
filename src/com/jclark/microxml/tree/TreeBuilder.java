@@ -195,7 +195,7 @@ class TreeBuilder implements TokenHandler<ParseException> {
         }
         if (!root.hasChildren())
             error(position, position, ParseError.EMPTY_DOCUMENT);
-        if (root.children().size() == 1 && root.getText(0).isEmpty())
+        if (root.children().size() == 1 && root.getText(0).isEmpty() && !foundContentAfterRoot)
             root = (LocatedElement)root.children().remove(0);
     }
 
