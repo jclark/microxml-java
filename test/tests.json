@@ -1,4 +1,3 @@
-
 [
     {
 	"id": "0001",
@@ -87,19 +86,27 @@
     },
     {
 	"id": "0018",
-	"source": ""
+	"source": "",
+        "result": ["#doc",{},[]],
+        "valid": false
     },
     {
 	"id": "0019",
-	"source": "foo"
+	"source": "foo",
+        "result": ["#doc",{},["foo"]],
+        "valid": false
     },
     {
 	"id": "0020",
-	"source": "<doc>"
+	"source": "<doc>",
+        "result": ["doc",{},[]],
+        "valid": false
     },
     {
 	"id": "0021",
-	"source": "< doc></doc>"
+	"source": "< doc></doc>",
+        "result": ["#doc",{},["< doc>"]],
+        "valid": false
     },
     {
 	"id": "0022",
@@ -107,7 +114,9 @@
     },
     {
 	"id": "0023",
-	"source": "<doc></document>"
+	"source": "<doc></document>",
+        "result": ["doc",{},[]],
+        "valid": false
     },
     {
 	"id": "0024",
@@ -115,7 +124,9 @@
     },
     {
 	"id": "0025",
-	"source": "<doc></doc"
+	"source": "<doc></doc" ,
+        "result": ["doc",{},["</doc"]],
+        "valid": false
     },
     {
 	"id": "0026",
@@ -147,7 +158,9 @@
     },
     {
 	"id": "0033",
-	"source": "<doc xmlns='http://www.w3.org'></doc>"
+	"source": "<doc xmlns='http://www.w3.org'></doc>",
+        "result": ["doc", {"xmlns": "http://www.w3.org"}, []],
+        "valid": false
     },
     {
 	"id": "0034",
@@ -155,11 +168,15 @@
     },
     {
 	"id": "0035",
-	"source": "<doc>2>1</doc>"
+	"source": "<doc>2>1</doc>",
+        "result": ["doc", {}, ["2>1"]],
+        "valid": false
     },
     {
 	"id": "0036",
-	"source": "<doc att='2>1'/>"
+	"source": "<doc att='2>1'/>",
+        "result": ["doc", {"att": "2>1"}, []],
+        "valid": false
     },
     {
 	"id": "0037",
@@ -357,11 +374,15 @@
     },
     {
 	"id": "0079",
-	"source": "<doc></doc>junk"
+	"source": "<doc></doc>junk",
+        "result": ["#doc",{},[["doc",{},[]], "junk"]],
+        "valid": false
     },
     {
 	"id": "0080",
-	"source": "<doc></doc><doc/>"
+	"source": "<doc></doc><doc/>",
+        "result": ["#doc",{},[["doc",{},[]], ["doc",{},[]]]],
+        "valid": false
     },
     {
 	"id": "0081",
@@ -426,7 +447,9 @@
     },
     {
 	"id": "0095",
-	"source": "<doc att='<'></doc>"
+	"source": "<doc att='<'></doc>",
+        "result": ["doc", {"att": "<"}, []],
+        "valid": false
     },
     {
 	"id": "0096",
