@@ -612,12 +612,13 @@ class Tokenizer<TExc extends Throwable> {
                 handler.attributeOpen(attrNamePosition, bufStartPosition + markupIndex, attrName);
                 // switch to text mode
                 nextIndex = markupIndex;
-                if (!parseAttributeValue(buf[markupIndex - 1])) {
+                boolean ok = parseAttributeValue(buf[markupIndex - 1]);
+                // switch back to markup mode
+                markupIndex = nextIndex;
+                if (!ok) {
                     handler.startTagClose(bufStartPosition + nextIndex);
                     return;
                 }
-                // switch back to markup mode
-                markupIndex = nextIndex;
                 // TODO if this gets EOF it will produce a misleading error
                 m = getMarkup();
                 // need to check for space before next attribute
@@ -647,6 +648,7 @@ class Tokenizer<TExc extends Throwable> {
             else
                 parseText(quote);
         }
+        handler.attributeClose();
         error(ParseError.MISSING_QUOTE);
         return false;
     }
