@@ -293,7 +293,7 @@ class Tokenizer<TExc extends Throwable> {
                     }
                     if (t == TextType.SURROGATE1) {
                         if (nextIndex + 1 == limit) {
-                            if (startIndex > 0 || nextIndex > startIndex)
+                            if (nextIndex > startIndex)
                                 break loop; // deal with this in the next invocation of parseText
                             if (!fillBuf()) {
                                 error(ParseError.ISOLATED_SURROGATE);
