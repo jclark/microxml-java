@@ -808,7 +808,7 @@ class Tokenizer<TExc extends Throwable> {
     }
 
     private boolean replaceCodePoint(int codePoint) {
-        return true;
+        return false;
     }
 
     private MarkupCharType handleSurrogate(char ch) throws TExc, IOException {
