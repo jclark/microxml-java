@@ -49,5 +49,10 @@ Optionally normalize attribute values a la XML.
 
 Option to specify character entities to use for recovery.
 
+LocatedElement needs to update locations to handle removed elements.
+
 Option to use schema information.
 
+Add SerializeOptions to control serialization.
+
+MicroXML.canonicalize should be serialize with options.
