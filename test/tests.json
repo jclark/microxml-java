@@ -242,7 +242,9 @@
     },
     {
 	"id": "0050",
-	"source": "<!--x--y--><doc></doc>"
+	"source": "<!--x--y--><doc></doc>",
+        "result": ["doc",{},[]],
+        "valid": false
     },
     {
 	"id": "0051",
@@ -439,7 +441,9 @@
     },
     {
 	"id": "0093",
-	"source": "<doc att='val"
+	"source": "<doc att='val",
+        "result": ["doc", {"att": "val"}, []],
+        "valid": false
     },
     {
 	"id": "0094",
