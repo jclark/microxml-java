@@ -9,7 +9,8 @@ import java.util.EnumSet;
  */
 class TreeBuilder implements TokenHandler<ParseException> {
 
-    static private final char BYTE_ORDER_MARK = 0xFEFF;
+    private static final char BYTE_ORDER_MARK = 0xFEFF;
+    private static final String FAKEROOT = "#doc";
 
     private final LineMap lineMap;
     private LocatedElement root;
@@ -27,7 +28,7 @@ class TreeBuilder implements TokenHandler<ParseException> {
         this.lineMap = lineMap;
         eh = options.getErrorHandler();
         suppressedErrors = options.getSuppressedErrors().clone();
-        root = new LocatedElement("#doc", 0, lineMap);
+        root = new LocatedElement(FAKEROOT, 0, lineMap);
         root.setStartTagCloseOffset(0);
         textElement = currentElement = root;
         attributeValueElement = new LocatedElement("#att", 0, lineMap);
