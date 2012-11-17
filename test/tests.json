@@ -87,26 +87,22 @@
     {
 	"id": "0018",
 	"source": "",
-        "result": ["#doc",{},[]],
-        "valid": false
+        "recover": ["#doc",{},[]]
     },
     {
 	"id": "0019",
 	"source": "foo",
-        "result": ["#doc",{},["foo"]],
-        "valid": false
+        "recover": ["#doc",{},["foo"]]
     },
     {
 	"id": "0020",
 	"source": "<doc>",
-        "result": ["doc",{},[]],
-        "valid": false
+        "recover": ["doc",{},[]]
     },
     {
 	"id": "0021",
 	"source": "< doc></doc>",
-        "result": ["#doc",{},["< doc>"]],
-        "valid": false
+        "recover": ["#doc",{},["< doc>"]]
     },
     {
 	"id": "0022",
@@ -115,8 +111,7 @@
     {
 	"id": "0023",
 	"source": "<doc></document>",
-        "result": ["doc",{},[]],
-        "valid": false
+        "recover": ["doc",{},[]]
     },
     {
 	"id": "0024",
@@ -125,8 +120,7 @@
     {
 	"id": "0025",
 	"source": "<doc></doc" ,
-        "result": ["doc",{},["</doc"]],
-        "valid": false
+        "recover": ["doc",{},["</doc"]]
     },
     {
 	"id": "0026",
@@ -159,8 +153,7 @@
     {
 	"id": "0033",
 	"source": "<doc xmlns='http://www.w3.org'></doc>",
-        "result": ["doc", {"xmlns": "http://www.w3.org"}, []],
-        "valid": false
+        "recover": ["doc", {"xmlns": "http://www.w3.org"}, []]
     },
     {
 	"id": "0034",
@@ -169,14 +162,12 @@
     {
 	"id": "0035",
 	"source": "<doc>2>1</doc>",
-        "result": ["doc", {}, ["2>1"]],
-        "valid": false
+        "recover": ["doc", {}, ["2>1"]]
     },
     {
 	"id": "0036",
 	"source": "<doc att='2>1'/>",
-        "result": ["doc", {"att": "2>1"}, []],
-        "valid": false
+        "recover": ["doc", {"att": "2>1"}, []]
     },
     {
 	"id": "0037",
@@ -243,8 +234,7 @@
     {
 	"id": "0050",
 	"source": "<!--x--y--><doc></doc>",
-        "result": ["doc",{},[]],
-        "valid": false
+        "recover": ["doc",{},[]]
     },
     {
 	"id": "0051",
@@ -377,14 +367,12 @@
     {
 	"id": "0079",
 	"source": "<doc></doc>junk",
-        "result": ["#doc",{},[["doc",{},[]], "junk"]],
-        "valid": false
+        "recover": ["#doc",{},[["doc",{},[]], "junk"]]
     },
     {
 	"id": "0080",
 	"source": "<doc></doc><doc/>",
-        "result": ["#doc",{},[["doc",{},[]], ["doc",{},[]]]],
-        "valid": false
+        "recover": ["#doc",{},[["doc",{},[]], ["doc",{},[]]]]
     },
     {
 	"id": "0081",
@@ -442,8 +430,7 @@
     {
 	"id": "0093",
 	"source": "<doc att='val",
-        "result": ["doc", {"att": "val"}, []],
-        "valid": false
+        "recover": ["doc", {"att": "val"}, []]
     },
     {
 	"id": "0094",
@@ -452,8 +439,7 @@
     {
 	"id": "0095",
 	"source": "<doc att='<'></doc>",
-        "result": ["doc", {"att": "<"}, []],
-        "valid": false
+        "recover": ["doc", {"att": "<"}, []]
     },
     {
 	"id": "0096",

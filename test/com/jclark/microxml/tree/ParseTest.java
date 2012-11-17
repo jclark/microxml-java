@@ -30,8 +30,11 @@ public class ParseTest {
     public void testParse(String id, String source, Element expected, boolean isValid) throws Exception {
         CountingErrorHandler eh = new CountingErrorHandler();
         Element actual = MicroXML.parse(source, new ParseOptions(eh));
-        if (expected != null)
-            assertTrue(Element.equivalent(actual, expected));
+        if (expected != null) {
+            StringBuffer buf = new StringBuffer();
+            MicroXML.serialize(actual, buf);
+            assertTrue(Element.equivalent(actual, expected), "Got:" + buf.toString());
+        }
         assertEquals(eh.count == 0, isValid);
     }
 
@@ -51,10 +54,16 @@ public class ParseTest {
             test[0] = testObj.get("id");
             test[1] = testObj.get("source");
             JSONArray result = (JSONArray)testObj.get("result");
-            test[2] = result == null ? null : toElement(result);
-            test[3] = testObj.get("valid");
-            if (test[3] == null)
-                test[3] = result == null ? Boolean.FALSE : Boolean.TRUE;
+            if (result != null) {
+                test[2] = toElement(result);
+                test[3] = Boolean.TRUE;
+            }
+            else {
+                result = (JSONArray)testObj.get("recover");
+                if (result != null)
+                    test[2] = toElement(result);
+                test[3] = Boolean.FALSE;
+            }
             tests.add(test);
         }
         return tests.toArray(new Object[][]{});
