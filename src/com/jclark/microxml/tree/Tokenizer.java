@@ -1,7 +1,5 @@
 package com.jclark.microxml.tree;
 
-import sun.nio.cs.StreamDecoder;
-
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
@@ -561,8 +559,15 @@ class Tokenizer<TExc extends Throwable> {
         boolean opened = false;
         try {
             for (;;) {
-                while (m.isWhitespace())
-                    m = getMarkup();
+                boolean hadSpace;
+                if (m.isWhitespace()) {
+                    hadSpace = true;
+                    do {
+                        m = getMarkup();
+                    } while (m.isWhitespace());
+                }
+                else
+                    hadSpace = false;
                 if (m == MarkupCharType.SLASH) {
                     m = getMarkup();
                     if (m != MarkupCharType.GT)
@@ -604,6 +609,10 @@ class Tokenizer<TExc extends Throwable> {
                     handler.startTagOpen(bufStartPosition + nextIndex, name);
                     nextIndex = attrNamePosition - bufStartPosition;
                 }
+                if (!hadSpace) {
+                    int index = attrNamePosition - bufStartPosition;
+                    error(index, index + 1, ParseError.SPACE_REQUIRED_BEFORE_ATTRIBUTE_NAME);
+                }
                 m = getMarkup();
                 while (m.isWhitespace())
                     m = getMarkup();
@@ -621,7 +630,6 @@ class Tokenizer<TExc extends Throwable> {
                 }
                 // TODO if this gets EOF it will produce a misleading error
                 m = getMarkup();
-                // need to check for space before next attribute
             }
         }
         catch (MarkupException e) {

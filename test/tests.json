@@ -106,7 +106,9 @@
     },
     {
 	"id": "0022",
-	"source": "<doc att=val/>"
+	"source": "<doc att=val/>",
+        "recover": ["doc", {}, ["att=val/>"]],
+        "todo-recover": ["doc", {"att": "val"}, []]
     },
     {
 	"id": "0023",
@@ -115,7 +117,8 @@
     },
     {
 	"id": "0024",
-	"source": "<doc><foo><bar></foo></bar></doc>"
+	"source": "<doc><foo><bar></foo></bar></doc>",
+        "recover": ["doc",{},[["foo",{},[["bar",{},[]]]]]]
     },
     {
 	"id": "0025",
@@ -128,7 +131,8 @@
     },
     {
 	"id": "0027",
-	"source": "</>"
+	"source": "</>",
+        "recover": ["#doc",{},["</>"]]
     },
     {
 	"id": "0028",
@@ -550,5 +554,10 @@
 	"id": "0120",
 	"source": "<\uDB7F\uDFFD/>",
 	"result": ["\uDB7F\uDFFD",{},[]]
+    },
+    {
+        "id": "0121",
+        "source": "<doc att1='val1'att2='val2'/>",
+        "recover": ["doc", {"att1":"val1", "att2":"val2"}, []]
     }
  ]

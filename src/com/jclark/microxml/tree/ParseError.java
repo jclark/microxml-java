@@ -1,7 +1,7 @@
 package com.jclark.microxml.tree;
 
 /**
- * @author <a href="mailto:jjc@jclark.com">James Clark</a>
+ * @author James Clark
  */
 enum ParseError {
     ISOLATED_SURROGATE("isolated surrogate"),
@@ -21,7 +21,8 @@ enum ParseError {
     FORBIDDEN_CODE_POINT_REF("reference to forbidden code point"),
     MISMATCHED_END_TAG("name in end-tag does not match the name of any open element"),
     DUPLICATE_ATTRIBUTE("duplicate attribute name"),
-    XMLNS_ATTRIBUTE("an attribute must not have the name \"xmlns\"");
+    XMLNS_ATTRIBUTE("an attribute must not have the name \"xmlns\""),
+    SPACE_REQUIRED_BEFORE_ATTRIBUTE_NAME("an attribute name must be preceded by whitespace");
 
     private final String format;
 
