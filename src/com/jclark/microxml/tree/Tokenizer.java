@@ -556,7 +556,8 @@ class Tokenizer<TExc extends Throwable> {
         while (m.isNameChar())
             m = getMarkup();
         String name = new String(buf, nextIndex + 1, markupIndex - nextIndex - 2);
-        boolean opened = false;
+        // 1 means tag opened, 2 means attribute also opened
+        int open = 0;
         try {
             for (;;) {
                 boolean hadSpace;
@@ -572,8 +573,8 @@ class Tokenizer<TExc extends Throwable> {
                     m = getMarkup();
                     if (m != MarkupCharType.GT)
                         giveUp(m);
-                    if (!opened) {
-                        opened = true;
+                    if (open == 0) {
+                        open = 1;
                         handler.startTagOpen(bufStartPosition + nextIndex, name);
                     }
                     handler.emptyElementTagClose(bufStartPosition + markupIndex);
@@ -581,8 +582,8 @@ class Tokenizer<TExc extends Throwable> {
                     return;
                 }
                 if (m == MarkupCharType.GT) {
-                    if (!opened) {
-                        opened = true;
+                    if (open == 0) {
+                        open = 1;
                         handler.startTagOpen(bufStartPosition + nextIndex, name);
                     }
                     handler.startTagClose(bufStartPosition + markupIndex);
@@ -604,49 +605,62 @@ class Tokenizer<TExc extends Throwable> {
                     m = getMarkup();
                 if (m != MarkupCharType.EQUALS)
                     giveUp(m);
-                if (!opened) {
-                    opened = true;
+                // Now we are sure we have an attribute, we can give an error if there was a space
+                // missing before the attribute name.
+                if (!hadSpace) {
+                     int index = attrNamePosition - bufStartPosition;
+                     error(index, index + 1, ParseError.SPACE_REQUIRED_BEFORE_ATTRIBUTE_NAME);
+                }
+                if (open == 0) {
                     handler.startTagOpen(bufStartPosition + nextIndex, name);
                     nextIndex = attrNamePosition - bufStartPosition;
                 }
-                if (!hadSpace) {
-                    int index = attrNamePosition - bufStartPosition;
-                    error(index, index + 1, ParseError.SPACE_REQUIRED_BEFORE_ATTRIBUTE_NAME);
-                }
+                handler.attributeOpen(attrNamePosition, bufStartPosition + markupIndex, attrName);
+                open = 2;
+                // if we give up now, reparseAsText starts here
+                nextIndex = markupIndex;
                 m = getMarkup();
                 while (m.isWhitespace())
                     m = getMarkup();
-                if (m != MarkupCharType.QUOTE)
-                    giveUp(m);
-                handler.attributeOpen(attrNamePosition, bufStartPosition + markupIndex, attrName);
-                // switch to text mode
-                nextIndex = markupIndex;
-                boolean ok = parseAttributeValue(buf[markupIndex - 1]);
-                // switch back to markup mode
-                markupIndex = nextIndex;
-                if (!ok) {
-                    handler.startTagClose(bufStartPosition + nextIndex);
-                    return;
+                if (m == MarkupCharType.QUOTE) {
+                    // switch to text mode
+                    nextIndex = markupIndex;
+                    boolean ok = parseQuotedAttributeValue();
+                    handler.attributeClose();
+                    // back to markup mode
+                    markupIndex = nextIndex;
+                    if (!ok) {
+                        handler.startTagClose(bufStartPosition + nextIndex);
+                        return;
+                    }
+                    open = 1;
+                    m = getMarkup();
                 }
-                m = getMarkup();
+                else {
+                    m = parseUnquotedAttributeValue(m);
+                    handler.attributeClose();
+                    open = 1;
+                }
             }
         }
         catch (MarkupException e) {
-            if (!opened)
+            if (open == 0)
                 throw e;
             // TODO more precise error messages
             error(markupIndex - 1, markupIndex, ParseError.EOF_IN_START_TAG);
-            handler.startTagClose(nextIndex);
+            if (open == 2)
+                handler.attributeClose();
+            handler.startTagClose(bufStartPosition + nextIndex);
             reparseAsText();
         }
     }
 
-    private boolean parseAttributeValue(char quote) throws TExc, IOException {
+    private boolean parseQuotedAttributeValue() throws TExc, IOException {
+        final char quote = buf[nextIndex - 1];
         while (hasNextChar()) {
             char c = buf[nextIndex];
             if (c == quote) {
                 ++nextIndex;
-                handler.attributeClose();
                 return true;
             }
             else if (c == '&')
@@ -656,9 +670,30 @@ class Tokenizer<TExc extends Throwable> {
             else
                 parseText(quote);
         }
-        handler.attributeClose();
         error(ParseError.MISSING_ATTRIBUTE_CLOSE_QUOTE);
         return false;
+    }
+
+    private MarkupCharType parseUnquotedAttributeValue(MarkupCharType m) throws TExc, IOException, MarkupException {
+        int startPos = bufStartPosition + markupIndex - 1;
+        for (; !m.isWhitespace() && m != MarkupCharType.GT; m = getMarkup()) {
+            if (m == MarkupCharType.AMP) {
+                nextIndex = markupIndex - 1;
+                parseCharRef();
+                markupIndex = nextIndex;
+            }
+            else {
+                if (m == MarkupCharType.SLASH && (markupIndex < limit || markupFillBuf()) && buf[markupIndex] == '>')
+                    break;
+                handler.literalChars(bufStartPosition + markupIndex - 1, buf, markupIndex - 1, 1);
+                nextIndex = markupIndex;
+            }
+        }
+        if (startPos == bufStartPosition + markupIndex - 1)
+            error(startPos - bufStartPosition, markupIndex, ParseError.MISSING_ATTRIBUTE_VALUE);
+        else
+            error(startPos - bufStartPosition, markupIndex - 1, ParseError.UNQUOTED_ATTRIBUTE_VALUE);
+        return m;
     }
 
     private void parseEndTag() throws TExc, MarkupException, IOException {

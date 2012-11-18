@@ -25,8 +25,6 @@ XML Builder should have PIHandler property to be able to process PIs before the 
 
 Option not to replace forbidden characters.
 
-Recover from unquoted attribute values.
-
 Recover from HTML-style boolean attributes.
 
 Recover better from extended characters in names.

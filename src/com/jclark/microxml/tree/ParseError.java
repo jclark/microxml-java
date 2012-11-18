@@ -23,7 +23,9 @@ enum ParseError {
     DUPLICATE_ATTRIBUTE("duplicate attribute name"),
     XMLNS_ATTRIBUTE("an attribute must not have the name \"xmlns\""),
     SPACE_REQUIRED_BEFORE_ATTRIBUTE_NAME("an attribute name must be preceded by whitespace"),
-    EOF_IN_START_TAG("unclosed start-tag");
+    EOF_IN_START_TAG("unclosed start-tag"),
+    MISSING_ATTRIBUTE_VALUE("missing attribute value"),
+    UNQUOTED_ATTRIBUTE_VALUE("unquoted attribute value");
 
     private final String format;
 

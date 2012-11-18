@@ -107,8 +107,7 @@
     {
 	"id": "0022",
 	"source": "<doc att=val/>",
-        "recover": ["doc", {}, ["att=val/>"]],
-        "todo-recover": ["doc", {"att": "val"}, []]
+        "recover": ["doc", {"att": "val"}, []]
     },
     {
 	"id": "0023",
