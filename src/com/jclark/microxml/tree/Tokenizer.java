@@ -628,14 +628,14 @@ class Tokenizer<TExc extends Throwable> {
                     handler.startTagClose(bufStartPosition + nextIndex);
                     return;
                 }
-                // TODO if this gets EOF it will produce a misleading error
                 m = getMarkup();
             }
         }
         catch (MarkupException e) {
             if (!opened)
                 throw e;
-            error(markupIndex - 1, markupIndex, ParseError.MISSING_QUOTE);
+            // TODO more precise error messages
+            error(markupIndex - 1, markupIndex, ParseError.EOF_IN_START_TAG);
             handler.startTagClose(nextIndex);
             reparseAsText();
         }
@@ -657,7 +657,7 @@ class Tokenizer<TExc extends Throwable> {
                 parseText(quote);
         }
         handler.attributeClose();
-        error(ParseError.MISSING_QUOTE);
+        error(ParseError.MISSING_ATTRIBUTE_CLOSE_QUOTE);
         return false;
     }
 

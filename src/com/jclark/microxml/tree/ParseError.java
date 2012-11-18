@@ -10,7 +10,7 @@ enum ParseError {
     UNESCAPED_LT("unescaped \">\""),
     UNESCAPED_AMP("unescaped \"&\""),
     REF_CODE_POINT_TOO_BIG("character number must not exceed #x10FFFF"),
-    MISSING_QUOTE("missing quote"),
+    MISSING_ATTRIBUTE_CLOSE_QUOTE("missing close quote for attribute value"),
     UNKNOWN_CHAR_NAME("reference to unknown character name"),
     UNTERMINATED_COMMENT("unterminated comment"),
     DOUBLE_MINUS_IN_COMMENT("comment must not contain \"--\""),
@@ -22,7 +22,8 @@ enum ParseError {
     MISMATCHED_END_TAG("name in end-tag does not match the name of any open element"),
     DUPLICATE_ATTRIBUTE("duplicate attribute name"),
     XMLNS_ATTRIBUTE("an attribute must not have the name \"xmlns\""),
-    SPACE_REQUIRED_BEFORE_ATTRIBUTE_NAME("an attribute name must be preceded by whitespace");
+    SPACE_REQUIRED_BEFORE_ATTRIBUTE_NAME("an attribute name must be preceded by whitespace"),
+    EOF_IN_START_TAG("unclosed start-tag");
 
     private final String format;
 
