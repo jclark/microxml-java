@@ -13,7 +13,7 @@ Parsing is divided in two consecutive phases: tokenization and tree building. In
 
 The tokenization phase does not make use of information about the document type. However, the tree building phase may optionally make use of information about the document type (eg a schema). This specification defines a way of performing the tree building phase that does not make any use of schema information.  It does not (yet) define how schema information is to be used if it is available.  
 
-The tokenization phase is also designed to implementable in a streaming fashion, whereas the tree-building phase is not.
+The tokenization phase is also designed to be allow for a streaming implementation, whereas the tree-building phase is not.
 
 ## Tokenization
 
@@ -25,7 +25,7 @@ The input to the tokenization phase is a sequence of characters. The output of t
      
 ### Lexical tokens
 
-The tokenization phase works by dividing up the input into _lexical tokens_. Each lexical token has an associated regular grammar and may also have associated data. Lexical tokens are named in UPPER_CASE. The following lexical tokens are defined:
+The tokenization phase works by dividing up the input into _lexical tokens_. Each lexical token has an associated regular grammar and may also have associated data. Lexical tokens are named in UPPER_CASE. The following defines the possible lexical tokens and their grammars using the same notation as the MicroXML spec.
 
     DATA_CHAR ::= [#x0-#x10FFFF]
     COMMENT_OPEN ::= "<!--"
@@ -75,6 +75,8 @@ A step in the tokenization process consists of the following.
 The tokenization process starts with Init as the current tokenization mode, and the input to the tokenization process as the current input, and repeats the tokenization step until the current input is empty. At this point, if the current tokenization mode is one of Tag, StartAttributeValue, SingleQuoteAttributeValue or DoubleQuoteAttributeValue, then a StartTagClose abstract token is emitted.
 
 ### Default handling rules
+
+This section defines default handling rules for certain lexical tokens, which are used in the definition of various tokenization modes.
 
 + DATA_CHAR - emit a DataChar token
 + NAMED_CHAR_REF - if the associated string is a valid character name emit a single DataChar, otherwise emit a DataChar for each character in the NAMED_CHAR_REF 
