@@ -1,7 +1,9 @@
-This will be a MicroXML parser in Java. At the moment it's just an API.
+This is a Java library for processing MicroXML.
 
-The goals are to explore:
-- Java APIs for MicroXML
+The main goals are to explore:
+- better DOMs for the MicroXML data model
 - error recovery for MicroXML
+
+It's in the pre-alpha stage at the moment, and not ready for public use.
 
 James Clark
