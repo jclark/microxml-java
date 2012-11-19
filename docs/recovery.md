@@ -23,28 +23,31 @@ The input to the tokenization phase is a sequence of characters. The output of t
 
 The tokenization phase works by dividing up the input into _lexical tokens_. Each lexical token has an associated regular grammar and may also have associated data. Lexical tokens are named in UPPER_CASE. The following lexical tokens are defined:
 
-    DATA_CHAR = [#x0-#x10FFFF]
-    COMMENT_OPEN = "<!--"
-    COMMENT_CLOSE = "-->"
-    SIMPLE_START_TAG = START_TAG_OPEN S* START_TAG_CLOSE
-    SIMPLE_EMPTY_ELEMENT_TAG = START_TAG_OPEN S* EMPTY_ELEMENT_TAG_CLOSE
-    START_TAG_ATTRIBUTE = START_TAG_OPEN S+ ATTRIBUTE_NAME_EQUALS
-    START_TAG_CLOSE = ">"
-    EMPTY_ELEMENT_TAG_CLOSE = "/>"
-    END_TAG = "</" NAME S* ">"
-    START_TAG_OPEN = "<" NAME
-    ATTRIBUTE_NAME_EQUALS = S* NAME S* "="
-    NAME = NAME_START_CHAR NAME_CHAR*
-    NAME_START_CHAR = [A-Za-z_:$] | [#x80-#x10FFFF]
-    NAME_CHAR = NAME_START_CHAR | [0-9] | "-" | "."
-    NAMED_CHAR_REF = "&" NAME ";"
-    NUMERIC_CHAR_REF = "&#x" HEX_NUMBER ";"
-    HEX_NUMBER = [0-9a-fA-F]+
-    S = #x9 | #xA | #xC | #x20
+    DATA_CHAR ::= [#x0-#x10FFFF]
+    COMMENT_OPEN ::= "<!--"
+    COMMENT_CLOSE ::= "-->"
+    SIMPLE_START_TAG ::= START_TAG_OPEN S* START_TAG_CLOSE
+    SIMPLE_EMPTY_ELEMENT_TAG ::= START_TAG_OPEN S* EMPTY_ELEMENT_TAG_CLOSE
+    START_TAG_ATTRIBUTE ::= START_TAG_OPEN S+ ATTRIBUTE_NAME_EQUALS
+    START_TAG_CLOSE ::= ">"
+    EMPTY_ELEMENT_TAG_CLOSE ::= "/>"
+    END_TAG ::= "</" NAME S* ">"
+    START_TAG_OPEN ::= "<" NAME
+    ATTRIBUTE_NAME_EQUALS ::= S* NAME S* "="
+    NAME ::= NAME_START_CHAR NAME_CHAR*
+    NAME_START_CHAR ::= [A-Za-z_:$] | [#x80-#x10FFFF]
+    NAME_CHAR ::= NAME_START_CHAR | [0-9] | "-" | "."
+    NAMED_CHAR_REF ::= "&" NAME ";"
+    NUMERIC_CHAR_REF ::= "&#x" HEX_NUMBER ";"
+    HEX_NUMBER ::= [0-9a-fA-F]+
+    S ::= #x9 | #xA | #xC | #x20
+    SINGLE_QUOTE ::= "'"
+    DOUBLE_QUOTE ::= '"'
 
 The associated data for lexical tokens is as follows is as follows:
 
 + START_TAG_OPEN, END_TAG and NAMED_CHAR_REF have an string (which is a NAME)
++ START_TAG_ATTRIBUTE has two strings (both NAMES, an element name and an attribute name)
 + NUMERIC_CHAR_REF has a non-negative integer
 + DATA_CHAR has a code-point (a non-negative integer in the range 0 to #x10FFFF)
 
@@ -54,6 +57,18 @@ There are a number of different tokenization modes.  Each tokenization mode spec
 + rules for mapping each recognized lexical token to zero or more abstract tokens, and
 + rules for when to change to another tokenization mode.
 
+The state of the tokenization process consists of
++ the current tokenization mode
++ the current input (a sequence of code-points)
+
+A step in the tokenization process consists of:
++ recognizing the next token; this consists finding the longest initial subsequence of the input that matches one of the lexical tokens recognized in the current tokenization mode
++ emitting zero or more abstract tokens according to the rules for that lexical token in that tokenization mode
++ possible changing to another tokenization mode according to the rules for that lexical token in that tokenization mode
++ changing the current input to be the sequence of characters following the token
+
+The tokenization process starts with Main as the current tokenization mode, and the input to the tokenization process as the current input, and repeats the tokenization step until the current input is empty. The output of the tokenization process consists of the abstact tokens emitted by the steps in the process.
+
 ### Default handling rules
 
 + DATA_CHAR - emit a DataChar token
@@ -62,51 +77,49 @@ There are a number of different tokenization modes.  Each tokenization mode spec
 + START_TAG_CLOSE - emit a StartTagClose token and change to Main mode
 + EMPTY_ELEMENT_TAG_CLOSE - emit an EmptyElementTagClose token and change to Main mode
 
-### Main tokenization mode
+### Tokenization modes
 
-In the Main tokenization mode, tokens are handled as follows:
+#### Main
 
 + DATA_CHAR, NAMED_CHAR_REF, NUMERIC_CHAR_REF - default handling
-+ COMMENT_OPEN - switch to Comment tokenization mode
++ COMMENT_OPEN - change to Comment mode
 + SIMPLE_START_TAG - emit a StartTagOpen token followed by a StartTagClose token
 + SIMPLE_EMPTY_ELEMENT_TAG - emit a StartTagOpen token followed by a EmptyElementTagClose token
-+ START_TAG_ATTRIBUTE - emit a StartTagOpen token followed by an AttributeName token and switch to StartAttributeValue mode
++ START_TAG_ATTRIBUTE - emit a StartTagOpen token followed by an AttributeName token and change to StartAttributeValue mode
 + END_TAG - emit an EndTag token
 
-### Comment tokenization mode
-
-In Comment tokenization mode, tokens are handled as follows:
+#### Comment
 
 + DATA_CHAR - do nothing
-+ COMMENT_CLOSE - switch to Main tokenization mode
++ COMMENT_CLOSE - change to Main mode
 
-### StartAttributeValue tokenization mode
+#### StartAttributeValue
 
 + S - do nothing
-+ SINGLE_QUOTE - switch to SingleQuoteAttributeValue mode
-+ DOUBLE_QUOTE - switch to DoubleQuoteAttributeValue mode
-+ DATA_CHAR, NAMED_CHAR_REF, NUMERIC_CHAR_REF - default handling them switch to UnquoteAttributeValue mode
++ SINGLE_QUOTE - change to SingleQuoteAttributeValue mode
++ DOUBLE_QUOTE - change to DoubleQuoteAttributeValue mode
++ DATA_CHAR, NAMED_CHAR_REF, NUMERIC_CHAR_REF - default handling, then change to UnquoteAttributeValue mode
 + START_TAG_CLOSE, EMPTY_ELEMENT_TAG_CLOSE - default handling
 
-### UnquoteAttributeValue mode
+#### UnquoteAttributeValue
 
 + DATA_CHAR, NAMED_CHAR_REF, NUMERIC_CHAR_REF, START_TAG_CLOSE, EMPTY_ELEMENT_TAG_CLOSE - default handling
-+ S - switch to TagMode
++ S - change to Tag mode
 
-### SingleQuoteAttributeValueMode
-
-+ DATA_CHAR, NAMED_CHAR_REF, NUMERIC_CHAR_REF - default handling
-+ SINGLE_QUOTE - switch to TagMode
-
-### DoubleQuoteAttributeValueMode
+#### SingleQuoteAttributeValue
 
 + DATA_CHAR, NAMED_CHAR_REF, NUMERIC_CHAR_REF - default handling
-+ DOUBLE_QUOTE - switch to TagMode
++ SINGLE_QUOTE - change to Tag mode
 
-### TagMode
+#### DoubleQuoteAttributeValue
 
-+ ATTRIBUTE_NAME_EQUALS - emit a AttributeName token and switch to StartAttributeValue mode
-+ DATA_CHAR - emit a StartTagClose and a DataChar token and switch to Main mode
++ DATA_CHAR, NAMED_CHAR_REF, NUMERIC_CHAR_REF - default handling
++ DOUBLE_QUOTE - change to Tag mode
+
+#### Tag mode
+
++ ATTRIBUTE_NAME_EQUALS - emit a AttributeName token and change to StartAttributeValue mode
++ DATA_CHAR - emit a StartTagClose and a DataChar token and change to Main mode
 
 ## Tree building
 
