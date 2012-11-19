@@ -140,6 +140,17 @@ This is the same as Init mode except that BOM is not recognized.
 + DATA_CHAR, NAMED_CHAR_REF, NUMERIC_CHAR_REF - default handling
 + DOUBLE_QUOTE - change to Tag mode
 
+### TODO
+
+Define additional tokens:
+
+    DECL_OPEN ::= "<!"
+    PI_OPEN ::= "<?"
+
+and appropriate rules.
+
+Maybe handle HTML-style boolean attributes.
+
 ## Tree building
 
 The tree building phase turns a sequence of abstract tokens into the MicroXML data model. This is equivalent to transforming the sequence of abstract tokens so that it matches the following grammar for element:
