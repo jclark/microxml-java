@@ -80,7 +80,7 @@ This section defines default handling rules for certain lexical tokens, which ar
 
 + DATA_CHAR - emit a DataChar token
 + NAMED_CHAR_REF - if the associated string is a valid character name emit a single DataChar, otherwise emit a DataChar for each character in the NAMED_CHAR_REF 
-+ NUMERIC_CHAR_REF - if the associated number is <= #x10FFFF emit a single DataChar, otherwise emit a DataChar for each
++ NUMERIC_CHAR_REF - if the associated number is <= #x10FFFF emit a single DataChar, otherwise emit a DataChar for each character in the NUMERIC_CHAR_REF
 + START_TAG_CLOSE - emit a StartTagClose token and change to Main mode
 + EMPTY_ELEMENT_TAG_CLOSE - emit an EmptyElementTagClose token and change to Main mode
 
