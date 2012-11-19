@@ -11,6 +11,10 @@ Parsing is divided in two consecutive phases: tokenization and tree building. In
 + EndTag - associated data is a string (the name of the element)
 + AttributeName - associated data is a string (the name of the attribute)
 
+The tokenization phase does not make use of information about the document type. However, the tree building phase may optionally make use of information about the document type (eg a schema). This specification defines a way of performing the tree building phase that does not make any use of schema information.  It does not (yet) define how schema information is to be used if it is available.  
+
+The tokenization phase is also designed to implementable in a streaming fashion, whereas the tree-building phase is not.
+
 ## Tokenization
 
 The input to the tokenization phase is a sequence of characters. The output of the tokenization phase is a sequence of abstract tokens that matches the following regular expression:
@@ -43,15 +47,16 @@ The tokenization phase works by dividing up the input into _lexical tokens_. Eac
     S ::= #x9 | #xA | #xC | #x20
     SINGLE_QUOTE ::= "'"
     DOUBLE_QUOTE ::= '"'
+    BOM ::= #xFEFF
 
-The associated data for lexical tokens is as follows is as follows:
+The associated data for lexical tokens is as follows:
 
-+ START_TAG_OPEN, END_TAG and NAMED_CHAR_REF have an string (which is a NAME)
++ START_TAG_OPEN, END_TAG, ATTRIBUTE_NAME_EQUALS and NAMED_CHAR_REF have a string (which is a NAME)
 + START_TAG_ATTRIBUTE has two strings (both NAMES, an element name and an attribute name)
 + NUMERIC_CHAR_REF has a non-negative integer
 + DATA_CHAR has a code-point (a non-negative integer in the range 0 to #x10FFFF)
 
-There are a number of different tokenization modes.  Each tokenization mode specifies
+There are a number of different named tokenization modes.  Each tokenization mode specifies
 
 + a set of lexical tokens that are recognized in that mode,
 + rules for mapping each recognized lexical token to zero or more abstract tokens, and
@@ -61,13 +66,13 @@ The state of the tokenization process consists of
 + the current tokenization mode
 + the current input (a sequence of code-points)
 
-A step in the tokenization process consists of:
-+ recognizing the next token; this consists finding the longest initial subsequence of the input that matches one of the lexical tokens recognized in the current tokenization mode
-+ emitting zero or more abstract tokens according to the rules for that lexical token in that tokenization mode
-+ possible changing to another tokenization mode according to the rules for that lexical token in that tokenization mode
-+ changing the current input to be the sequence of characters following the token
+A step in the tokenization process consists of the following.
++ Recognizing the next lexical token. This consists of finding the longest initial subsequence of the input that matches one of the lexical tokens recognized in the current tokenization mode. It is possible for there to be two choices for the longest matching token (eg BOM and DATA_CHAR in Init mode): in this case, the choice that is not DATA_CHAR must be recognized.
++ Emitting zero or more abstract tokens according to the rules for that lexical token in that tokenization mode.
++ Possibly changing to another tokenization mode according to the rules for that lexical token in that tokenization mode.
++ Changing the current input to be the sequence of characters following the token.
 
-The tokenization process starts with Main as the current tokenization mode, and the input to the tokenization process as the current input, and repeats the tokenization step until the current input is empty. The output of the tokenization process consists of the abstact tokens emitted by the steps in the process.
+The tokenization process starts with Init as the current tokenization mode, and the input to the tokenization process as the current input, and repeats the tokenization step until the current input is empty. At this point, if the current tokenization mode is one of Tag, StartAttributeValue, SingleQuoteAttributeValue or DoubleQuoteAttributeValue, then a StartTagClose abstract token is emitted.
 
 ### Default handling rules
 
@@ -79,6 +84,8 @@ The tokenization process starts with Main as the current tokenization mode, and 
 
 ### Tokenization modes
 
+This section defines the available tokenization modes.  The only tokens that are recognized in each mode are those that are explicitly mentioned in each mode.
+
 #### Main
 
 + DATA_CHAR, NAMED_CHAR_REF, NUMERIC_CHAR_REF - default handling
@@ -88,10 +95,27 @@ The tokenization process starts with Main as the current tokenization mode, and 
 + START_TAG_ATTRIBUTE - emit a StartTagOpen token followed by an AttributeName token and change to StartAttributeValue mode
 + END_TAG - emit an EndTag token
 
+#### Init
+
+This recognizes all the tokens in Main mode plus BOM and S.
+
+BOM and S are handled by changing to Prolog mode.
+
+Other tokens are handled as in Main mode, except that if the current mode is still Init mode after handling the token, the current mode is changed to Main mode.
+
+### Prolog
+
+This is the same as Init mode except that BOM is not recognized.
+
 #### Comment
 
 + DATA_CHAR - do nothing
 + COMMENT_CLOSE - change to Main mode
+
+#### Tag
+
++ ATTRIBUTE_NAME_EQUALS - emit a AttributeName token and change to StartAttributeValue mode
++ DATA_CHAR - emit a StartTagClose and a DataChar token and change to Main mode
 
 #### StartAttributeValue
 
@@ -116,14 +140,9 @@ The tokenization process starts with Main as the current tokenization mode, and 
 + DATA_CHAR, NAMED_CHAR_REF, NUMERIC_CHAR_REF - default handling
 + DOUBLE_QUOTE - change to Tag mode
 
-#### Tag mode
-
-+ ATTRIBUTE_NAME_EQUALS - emit a AttributeName token and change to StartAttributeValue mode
-+ DATA_CHAR - emit a StartTagClose and a DataChar token and change to Main mode
-
 ## Tree building
 
-The tree building phase turns a sequence of abstract tokens into the MicroXML data model. This is equivalent to transforming the sequence of abstract tokens so that it matches the grammar for element:
+The tree building phase turns a sequence of abstract tokens into the MicroXML data model. This is equivalent to transforming the sequence of abstract tokens so that it matches the following grammar for element:
 
      element ::= start-tag (element|DataChar) EndTag | empty-element
      empty-element ::= StartTagOpen attribute-list EmptyElementTagClose
@@ -135,9 +154,33 @@ and so that:
 + the start-tag and EndTag in each element have the same name
 + all attributes in an attribute-list have distinct names
 
-There are two main tasks:
-+ making start-tags and end-tags match
-+ ensuring that the sequence corresponds to a single element
+### Duplicate attribute handling
+
+If an attribute has the same name as an earlier attribute, it is ignored.
+
+### Start- and end-tag matching
+
+If the name of an end-tag does not matches the name of the current open element, then
++ if the name matches the name of an open element, insert end-tags until that open element becomes the current open element;
++ otherwise, remove the end-tag.
+
+If at the end of input that are open elements, insert end-tags until the open elements are all closed.
+
+### Ignoring insignificant whitespace
+
+If the abstract token sequence consists of a single element followed by one or more whitespace DataChars, then remove the DataChars.
+
+### Ensuring that there is a single element
+
+If at this point we do not have a single element, wrap everything in an element named `#doc`.
+
+
+
+
+
+
+
+
 
 
 
