@@ -6,4 +6,6 @@ The main goals are to explore:
 
 It's in the pre-alpha stage at the moment, and not ready for public use.
 
+It can be built with [Apache Buildr](http://buildr.apache.com/).
+
 James Clark
